@@ -1,0 +1,1 @@
+Python 3.9+ with FastAPI + Uvicorn for the HTTP server; OpenAI Python SDK configured against Alibaba Cloud Model Studio (Qwen) via an OpenAI-compatible base URL; PyPDF for resume text extraction; requests for GitHub REST API calls; python-dotenv for local `.env` loading; pydantic for request/response validation.

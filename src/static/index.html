@@ -1,1 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CareerOS AI — Evidence-Based Career Intelligence</title>
+<style>
+/* ==========================================================================
+   CareerOS AI — single-file frontend (no build step, no external CDNs).
+   Dark theme, orange accent, fully responsive.
+   ========================================================================== */
+:root {
+  --bg: #0b0e14;
+  --panel: #141925;
+  --panel-2: #1b2130;
+  --border: #262e40;
+  --text: #e6eaf2;
+  --muted: #94a0b8;
+  --accent: #ff7a1a;
+  --accent-2: #ffb347;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --radius: 14px;
+}
 
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  background: radial-gradient(1200px 600px at 80% -10%, #1c2233 0%, var(--bg) 55%);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.55;
+}
+
+.container { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* ---------- header ---------- */
+header { text-align: center; padding: 28px 0 8px; }
+.logo {
+  font-size: 34px; font-weight: 800; letter-spacing: -0.5px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.tagline { color: var(--muted); margin-top: 6px; }
+.badge-row { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.badge {
+  font-size: 12px; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+.badge b { color: var(--accent-2); font-weight: 600; }
+
+/* ---------- setup warning ---------- */
+#warning {
+  display: none; margin: 18px auto 0; max-width: 760px;
+  background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.4);
+  color: var(--amber); border-radius: var(--radius); padding: 12px 16px; font-size: 14px;
+}
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 26px; margin-top: 22px;
+}
+.card h2 { font-size: 18px; margin-bottom: 14px; }
+.hint { color: var(--muted); font-size: 13px; }
+
+/* ---------- form ---------- */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 13px; font-weight: 600; color: var(--muted); }
+label .opt { font-weight: 400; opacity: 0.7; }
+
+input[type="text"], textarea {
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit;
+  outline: none; width: 100%;
+}
+input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 90px; }
+
+/* file upload */
+.file-drop {
+  border: 1.5px dashed var(--border); border-radius: 10px; padding: 18px;
+  text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.file-drop:hover, .file-drop.drag { border-color: var(--accent); background: rgba(255, 122, 26, 0.06); }
+.file-drop .icon { font-size: 24px; }
+.file-drop small { display: block; color: var(--muted); margin-top: 4px; }
+.file-drop input[type="file"] { display: none; }
+#file-name { color: var(--accent-2); font-size: 13px; margin-top: 6px; min-height: 18px; }
+
+.submit-btn {
+  grid-column: 1 / -1; margin-top: 4px;
+  background: linear-gradient(90deg, var(--accent), #ff9432); color: #16100a;
+  font-weight: 700; font-size: 16px; border: none; border-radius: 10px;
+  padding: 14px; cursor: pointer; transition: transform .1s, filter .15s;
+}
+.submit-btn:hover { filter: brightness(1.08); }
+.submit-btn:active { transform: scale(0.99); }
+.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- loading ---------- */
+#loading { text-align: center; display: none; }
+.spinner {
+  width: 46px; height: 46px; margin: 6px auto 16px;
+  border: 4px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#load-step { font-weight: 600; }
+#load-timer { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.steps-list { list-style: none; margin: 18px auto 0; max-width: 420px; text-align: left; }
+.steps-list li {
+  color: var(--muted); font-size: 13px; padding: 3px 0 3px 26px; position: relative;
+}
+.steps-list li::before { content: "○"; position: absolute; left: 4px; }
+.steps-list li.done { color: var(--text); }
+.steps-list li.done::before { content: "✓"; color: var(--green); }
+.steps-list li.active { color: var(--accent-2); }
+.steps-list li.active::before { content: "◉"; color: var(--accent); }
+
+/* ---------- error ---------- */
+#error { display: none; border: 1px solid rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.07); }
+#error h2 { color: var(--red); }
+#error .code { color: var(--muted); font-size: 13px; }
+
+/* ---------- results ---------- */
+#results { display: none; }
+.section-title {
+  display: flex; align-items: center; gap: 10px; margin: 30px 0 12px; font-size: 15px;
+  font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+}
+.section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* hero: score + verdict */
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+.score-ring {
+  --p: 0; width: 150px; height: 150px; border-radius: 50%; position: relative;
+  background: conic-gradient(var(--score-color, var(--accent)) calc(var(--p) * 1%), #232b3d 0);
+  display: flex; align-items: center; justify-content: center;
+}
+.score-ring::before {
+  content: ""; position: absolute; inset: 12px; border-radius: 50%; background: var(--panel);
+}
+.score-num { position: relative; text-align: center; }
+.score-num .val { font-size: 40px; font-weight: 800; color: var(--score-color, var(--accent)); }
+.score-num .of { font-size: 13px; color: var(--muted); }
+.score-num .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.verdict h1 { font-size: 22px; margin-bottom: 6px; }
+.verdict p { color: var(--muted); }
+.verdict .meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* breakdown bars */
+.breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-top: 20px; }
+.bar-row .bar-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+.bar-row .bar-top span:last-child { color: var(--muted); }
+.bar { height: 8px; border-radius: 99px; background: #232b3d; overflow: hidden; }
+.bar > div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+/* chips */
+.chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.chip small { opacity: 0.75; font-size: 11px; }
+.chip.verified { border-color: rgba(52, 211, 153, 0.45); background: rgba(52, 211, 153, 0.08); color: var(--green); }
+.chip.unverified { border-color: rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.08); color: var(--amber); }
+
+/* simple lists */
+ul.clean { list-style: none; }
+ul.clean li { padding: 7px 0 7px 28px; position: relative; border-bottom: 1px dashed var(--border); }
+ul.clean li:last-child { border-bottom: none; }
+ul.clean li::before { position: absolute; left: 2px; }
+ul.check li::before { content: "✓"; color: var(--green); font-weight: 700; }
+ul.star li::before { content: "★"; color: var(--accent-2); }
+ul.num { counter-reset: item; }
+ul.num li { padding-left: 34px; }
+ul.num li::before {
+  content: counter(item); counter-increment: item;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--panel-2);
+  border: 1px solid var(--border); color: var(--accent-2); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; top: 8px;
+}
+
+/* gap + evidence cards */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.mini-card {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+}
+.mini-card .head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.mini-card .head b { font-size: 14px; }
+.mini-card p { font-size: 13px; color: var(--muted); }
+.sev { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; }
+.sev.critical { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+.sev.moderate { background: rgba(251, 191, 36, 0.15); color: var(--amber); }
+.sev.minor { background: rgba(148, 160, 184, 0.15); color: var(--muted); }
+.src { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; }
+.src.github { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+.src.resume { background: rgba(96, 165, 250, 0.15); color: var(--blue); }
+
+/* roadmap */
+.roadmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.week {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  border-top: 3px solid var(--accent); position: relative;
+}
+.week .wk { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent-2); font-weight: 700; }
+.week h4 { margin: 4px 0 10px; font-size: 15px; }
+.week ul { list-style: none; }
+.week li { font-size: 13px; color: var(--muted); padding: 3px 0 3px 22px; position: relative; }
+.week li::before { content: "◻"; position: absolute; left: 0; color: var(--accent); }
+.week .outcome { margin-top: 10px; font-size: 12px; color: var(--green); border-top: 1px dashed var(--border); padding-top: 8px; }
+
+/* project card */
+.project { border-left: 3px solid var(--accent); }
+.project .skills { margin-top: 10px; }
+
+/* agent raw output */
+details { margin-top: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; }
+details summary { cursor: pointer; padding: 12px 16px; font-size: 14px; font-weight: 600; }
+details pre {
+  padding: 4px 16px 16px; overflow: auto; font-size: 12px; color: var(--muted);
+  font-family: Consolas, "Courier New", monospace; max-height: 340px;
+}
+
+/* actions */
+.actions { display: flex; justify-content: center; margin-top: 26px; }
+.ghost-btn {
+  background: transparent; color: var(--accent-2); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.ghost-btn:hover { background: rgba(255, 122, 26, 0.1); }
+
+footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 48px; }
+
+/* responsive */
+@media (max-width: 760px) {
+  .form-grid, .breakdown, .grid-2 { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; text-align: center; }
+  .verdict .meta { justify-content: center; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">CareerOS AI</div>
+    <p class="tagline">Evidence-based career intelligence — we verify skills, we don't just read claims.</p>
+    <div class="badge-row">
+      <span class="badge">🤖 5 AI Agents</span>
+      <span class="badge">Powered by <b>Google Gemini</b></span>
+      <span class="badge" id="badge-model">model: —</span>
+    </div>
+  </header>
+
+  <div id="warning"></div>
+
+  <!-- ===================== input form ===================== -->
+  <div class="card" id="form-card">
+    <h2>Start your analysis</h2>
+    <p class="hint" style="margin-bottom:16px">
+      Upload your resume, point us at your GitHub, and tell us the role you want.
+      We check what your resume <i>claims</i> against what your GitHub <i>proves</i>.
+    </p>
+    <form id="analyze-form" class="form-grid">
+      <div class="field full">
+        <label>Resume (PDF) </label>
+        <div class="file-drop" id="file-drop">
+          <div class="icon">📄</div>
+          <div>Click to choose your resume PDF</div>
+          <small>or drag &amp; drop it here — max 10 MB</small>
+          <input type="file" id="resume-file" accept=".pdf,application/pdf" />
+        </div>
+        <div id="file-name"></div>
+      </div>
+
+      <div class="field">
+        <label for="github_username">GitHub username</label>
+        <input type="text" id="github_username" name="github_username"
+               placeholder="e.g. torvalds" autocomplete="off" required />
+      </div>
+
+      <div class="field">
+        <label for="target_role">Target role</label>
+        <input type="text" id="target_role" name="target_role"
+               placeholder="e.g. Backend Developer" list="roles" required />
+        <datalist id="roles">
+          <option value="Frontend Developer"></option>
+          <option value="Backend Developer"></option>
+          <option value="Full-Stack Developer"></option>
+          <option value="Data Analyst"></option>
+          <option value="Data Scientist"></option>
+          <option value="Machine Learning Engineer"></option>
+          <option value="DevOps Engineer"></option>
+          <option value="Mobile Developer"></option>
+          <option value="AI Engineer"></option>
+          <option value="Cloud Engineer"></option>
+        </datalist>
+      </div>
+
+      <div class="field full">
+        <label for="job_description">Job description <span class="opt">(optional — paste one to match against it)</span></label>
+        <textarea id="job_description" name="job_description"
+                  placeholder="Paste the job posting here for a targeted match... leave empty to match against the role in general."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">Analyze my career readiness</button>
+    </form>
+  </div>
+
+  <!-- ===================== loading ===================== -->
+  <div class="card" id="loading">
+    <div class="spinner"></div>
+    <div id="load-step">Starting analysis…</div>
+    <div id="load-timer">elapsed 0s · a full analysis usually takes 1–2 minutes</div>
+    <ul class="steps-list" id="steps-list"></ul>
+  </div>
+
+  <!-- ===================== error ===================== -->
+  <div class="card" id="error">
+    <h2>⚠ Analysis failed</h2>
+    <p id="error-detail"></p>
+    <p class="code" id="error-code"></p>
+  </div>
+
+  <!-- ===================== results ===================== -->
+  <div id="results">
+
+    <div class="card">
+      <div class="hero">
+        <div class="score-ring" id="score-ring">
+          <div class="score-num">
+            <span class="val" id="score-val">–</span><span class="of">/100</span>
+            <div class="lbl">Readiness</div>
+          </div>
+        </div>
+        <div class="verdict">
+          <h1 id="verdict-title">Career Readiness Report</h1>
+          <p id="verdict-text"></p>
+          <div class="meta" id="verdict-meta"></div>
+        </div>
+      </div>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <div class="section-title">Verified skills <span class="hint" style="text-transform:none;letter-spacing:0">— claimed AND proven on GitHub</span></div>
+    <div class="card"><div class="chip-wrap" id="verified-chips"></div></div>
+
+    <div class="section-title">Unverified / claimed skills <span class="hint" style="text-transform:none;letter-spacing:0">— on the resume, no public proof found</span></div>
+    <div class="card"><div class="chip-wrap" id="unverified-chips"></div></div>
+
+    <div class="section-title">Strengths</div>
+    <div class="card"><ul class="clean star" id="strengths"></ul></div>
+
+    <div class="section-title">Evidence behind the assessment</div>
+    <div class="grid-2" id="evidence"></div>
+
+    <div class="section-title">Skill gaps</div>
+    <div class="grid-2" id="gaps"></div>
+
+    <div class="section-title">Recommendations</div>
+    <div class="card"><ul class="clean num" id="recommendations"></ul></div>
+
+    <div class="section-title">30-day learning roadmap</div>
+    <div class="roadmap" id="roadmap"></div>
+
+    <div class="section-title">Recommended project</div>
+    <div class="card project" id="project"></div>
+
+    <div class="section-title">Agent workspace <span class="hint" style="text-transform:none;letter-spacing:0">— raw output of each specialist agent</span></div>
+    <div id="agent-details"></div>
+
+    <div class="actions">
+      <button class="ghost-btn" id="reset-btn">↻ Run another analysis</button>
+    </div>
+  </div>
+
+  <footer>
+    CareerOS AI · built for the Alibaba Cloud AI Hackathon Pakistan 2026 ·
+    Multi-agent analysis with Google Gemini + GitHub REST API
+  </footer>
+</div>
+
+<script>
+/* ==========================================================================
+   Frontend logic
+   1) health check on load
+   2) form submit -> POST /api/analyze (multipart)
+   3) render the career report
+   ========================================================================== */
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+
+/* ---------- tiny helpers ---------- */
+function escapeHtml(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function asList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function scoreColor(score) {
+  if (score >= 70) return "var(--green)";
+  if (score >= 40) return "var(--amber)";
+  return "var(--red)";
+}
+
+/* ---------- 1) health check ---------- */
+async function checkHealth() {
+  try {
+    const res = await fetch("/health");
+    const info = await res.json();
+    if (info.model) $("badge-model").textContent = "model: " + info.model;
+    if (info.gemini_configured === false) {
+      const w = $("warning");
+      w.style.display = "block";
+      w.innerHTML = "<b>Model not configured.</b> Create a <code>.env</code> file from " +
+        "<code>.env.example</code> and set <code>GOOGLE_API_KEY</code> " +
+        "(Google AI Studio). The UI works, but analysis will not start without it.";
+    }
+  } catch (err) {
+    /* server unreachable — the form submit will surface the real error */
+  }
+}
+
+/* ---------- file input niceties ---------- */
+function setupFileInput() {
+  const drop = $("file-drop");
+  const input = $("resume-file");
+  const name = $("file-name");
+
+  drop.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    name.textContent = input.files.length ? "Selected: " + input.files[0].name : "";
+  });
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("drag");
+    if (e.dataTransfer.files.length) {
+      input.files = e.dataTransfer.files;
+      name.textContent = "Selected: " + input.files[0].name;
+    }
+  });
+}
+
+/* ---------- loading animation ---------- */
+const LOAD_STEPS = [
+  "Extracting text from your resume…",
+  "Fetching GitHub evidence…",
+  "Resume Analysis Agent — reading your experience…",
+  "GitHub Evidence Agent — verifying skills…",
+  "Job Matching Agent — comparing requirements…",
+  "Skill Gap Agent — finding what's missing…",
+  "Master Career Agent — writing your report…"
+];
+let loadTimerId = null, loadStepId = null, elapsed = 0;
+
+function startLoading() {
+  const list = $("steps-list");
+  list.innerHTML = LOAD_STEPS.map((s) => "<li>" + escapeHtml(s) + "</li>").join("");
+  Array.from(list.children).forEach((li, i) => {
+    if (i === 0) li.classList.add("active");
+  });
+  $("loading").style.display = "block";
+  $("error").style.display = "none";
+  $("form-card").style.display = "none";
+  $("submit-btn").disabled = true;
+  elapsed = 0;
+  let step = 0;
+
+  loadTimerId = setInterval(() => {
+    elapsed += 1;
+    $("load-timer").textContent =
+      "elapsed " + elapsed + "s · a full analysis usually takes 1–2 minutes";
+  }, 1000);
+
+  loadStepId = setInterval(() => {
+    if (step >= LOAD_STEPS.length - 1) return;
+    const items = list.children;
+    items[step].classList.remove("active");
+    items[step].classList.add("done");
+    step += 1;
+    items[step].classList.add("active");
+    $("load-step").textContent = LOAD_STEPS[step];
+  }, 14000);
+  $("load-step").textContent = LOAD_STEPS[0];
+}
+
+function stopLoading() {
+  clearInterval(loadTimerId);
+  clearInterval(loadStepId);
+  $("loading").style.display = "none";
+  $("submit-btn").disabled = false;
+}
+
+/* ---------- error display ---------- */
+function showError(status, detail) {
+  stopLoading();
+  $("form-card").style.display = "block";
+  const hints = {
+    400: "Please fix the highlighted problem and try again.",
+    503: "Setup: copy .env.example to .env and add your GOOGLE_API_KEY.",
+    502: "This is usually temporary (model or GitHub API). Try again in a moment."
+  };
+  $("error-detail").textContent = detail || "Unknown error.";
+  $("error-code").textContent = "HTTP " + status + " — " + (hints[status] || "");
+  $("error").style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- 2) submit ---------- */
+async function submitAnalysis(event) {
+  event.preventDefault();
+
+  const file = $("resume-file").files[0];
+  const github = $("github_username").value.trim();
+  const role = $("target_role").value.trim();
+
+  if (!file) { alert("Please choose your resume PDF first."); return; }
+  if (!github || !role) { alert("GitHub username and target role are required."); return; }
+
+  const form = new FormData();
+  form.append("resume", file);
+  form.append("github_username", github);
+  form.append("target_role", role);
+  const jd = $("job_description").value.trim();
+  if (jd) form.append("job_description", jd);
+
+  startLoading();
+
+  try {
+    const res = await fetch("/api/analyze", { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showError(res.status, data.detail || "The server rejected the request.");
+      return;
+    }
+    stopLoading();
+    renderReport(data);
+  } catch (err) {
+    showError(0, "Could not reach the CareerOS AI server. Is it running on port 8000?");
+  }
+}
+
+/* ---------- 3) render report ---------- */
+function renderReport(data) {
+  const report = data.analysis || {};
+  const meta = { role: data.target_role, github: data.github_username, name: (data.agent_details || {}).resume_analysis };
+
+  renderHero(report, meta);
+  renderBreakdown(report.score_breakdown);
+  renderChips("verified-chips", asList(report.verified_skills),
+    (s) => escapeHtml(s.skill) + " <small title=\"" + escapeHtml(s.evidence || "") + "\">✓ verified</small>");
+  renderChips("unverified-chips", asList(report.unverified_skills),
+    (s) => escapeHtml(s.skill) + " <small title=\"" + escapeHtml(s.reason || "") + "\">? unverified</small>");
+  renderList("strengths", asList(report.strengths));
+  renderEvidence(asList(report.evidence));
+  renderGaps(asList(report.skill_gaps));
+  renderList("recommendations", asList(report.recommendations));
+  renderRoadmap(asList(report.roadmap_30_days));
+  renderProject(report.recommended_project);
+  renderAgentDetails(data.agent_details || {});
+
+  $("results").style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderHero(report, meta) {
+  const score = Number(report.career_readiness_score) || 0;
+  const ring = $("score-ring");
+  ring.style.setProperty("--p", String(score));
+  ring.style.setProperty("--score-color", scoreColor(score));
+  $("score-val").textContent = String(score);
+
+  const resumeInfo = meta.name || {};
+  const who = resumeInfo.candidate_name ? resumeInfo.candidate_name : "Candidate";
+  $("verdict-title").textContent = who + " — " + (meta.role || "Career") + " readiness";
+
+  $("verdict-text").textContent = report.hiring_readiness_summary ||
+    "No summary was returned — check the agent workspace below for details.";
+
+  const years = resumeInfo.years_of_experience;
+  const chips = [];
+  if (years !== undefined && years !== "") chips.push("≈ " + years + " yrs experience");
+  if (meta.github) chips.push("GitHub: " + meta.github);
+  chips.push("Target: " + (meta.role || "—"));
+  $("verdict-meta").innerHTML = chips
+    .map((c) => "<span class=\"badge\">" + escapeHtml(c) + "</span>").join("");
+}
+
+function renderBreakdown(breakdown) {
+  const labels = [
+    ["resume_quality", "Resume quality"],
+    ["evidence_strength", "Evidence strength (GitHub)"],
+    ["job_match", "Job match"],
+    ["skill_coverage", "Skill coverage"]
+  ];
+  $("breakdown").innerHTML = labels.map(([key, label]) => {
+    const val = Math.max(0, Math.min(100, Number((breakdown || {})[key]) || 0));
+    return "<div class=\"bar-row\"><div class=\"bar-top\"><span>" + escapeHtml(label) +
+      "</span><span>" + val + "/100</span></div>" +
+      "<div class=\"bar\"><div style=\"width:" + val + "%\"></div></div></div>";
+  }).join("");
+}
+
+function renderChips(containerId, items, chipHtml) {
+  const box = $(containerId);
+  if (!items.length) {
+    box.innerHTML = "<span class=\"hint\">Nothing reported in this category.</span>";
+    return;
+  }
+  box.innerHTML = items.map((item) => {
+    const safe = (typeof item === "string") ? { skill: item } : (item || {});
+    return "<span class=\"chip " + (containerId.startsWith("verified") ? "verified" : "unverified") +
+      "\">" + chipHtml(safe) + "</span>";
+  }).join("");
+}
+
+function renderList(containerId, items) {
+  const box = $(containerId);
+  if (!items.length) {
+    box.innerHTML = "<li class=\"hint\">Nothing reported.</li>";
+    return;
+  }
+  box.innerHTML = items.map((item) => {
+    const text = (typeof item === "string") ? item : (item.skill || item.detail || JSON.stringify(item));
+    return "<li>" + escapeHtml(text) + "</li>";
+  }).join("");
+}
+
+function renderEvidence(items) {
+  const box = $("evidence");
+  if (!items.length) {
+    box.innerHTML = "<div class=\"mini-card\"><p>No evidence items were returned.</p></div>";
+    return;
+  }
+  box.innerHTML = items.map((item) => {
+    const safe = (typeof item === "string") ? { source: "resume", detail: item } : (item || {});
+    const cls = String(safe.source || "resume").toLowerCase() === "github" ? "github" : "resume";
+    return "<div class=\"mini-card\"><div class=\"head\"><span class=\"src " + cls + "\">" +
+      escapeHtml(safe.source || "resume") + "</span></div><p>" +
+      escapeHtml(safe.detail || "") + "</p></div>";
+  }).join("");
+}
+
+function renderGaps(items) {
+  const box = $("gaps");
+  if (!items.length) {
+    box.innerHTML = "<div class=\"mini-card\"><p>No major skill gaps were identified. 🎉</p></div>";
+    return;
+  }
+  box.innerHTML = items.map((item) => {
+    const safe = (typeof item === "string") ? { skill: item, severity: "moderate" } : (item || {});
+    const sev = ["critical", "moderate", "minor"].includes(safe.severity) ? safe.severity : "moderate";
+    return "<div class=\"mini-card\"><div class=\"head\"><b>" + escapeHtml(safe.skill || "") +
+      "</b><span class=\"sev " + sev + "\">" + escapeHtml(sev) + "</span></div><p>" +
+      escapeHtml(safe.why_it_matters || "") + "</p></div>";
+  }).join("");
+}
+
+function renderRoadmap(weeks) {
+  const box = $("roadmap");
+  if (!weeks.length) {
+    box.innerHTML = "<div class=\"mini-card\"><p>No roadmap was returned.</p></div>";
+    return;
+  }
+  box.innerHTML = weeks.map((week) => {
+    const safe = week || {};
+    const tasks = asList(safe.tasks).map((t) => "<li>" + escapeHtml(t) + "</li>").join("");
+    return "<div class=\"week\"><div class=\"wk\">Week " + escapeHtml(safe.week || "•") + "</div>" +
+      "<h4>" + escapeHtml(safe.focus || "Focus") + "</h4><ul>" + tasks + "</ul>" +
+      "<div class=\"outcome\">🏁 " + escapeHtml(safe.outcome || "") + "</div></div>";
+  }).join("");
+}
+
+function renderProject(project) {
+  const box = $("project");
+  const safe = project || {};
+  if (!safe.title) {
+    box.innerHTML = "<p class=\"hint\">No project recommendation was returned.</p>";
+    return;
+  }
+  const skills = asList(safe.skills_practiced)
+    .map((s) => "<span class=\"chip verified\">" + escapeHtml(s) + "</span>").join(" ");
+  box.innerHTML =
+    "<h2>🚀 " + escapeHtml(safe.title) + "</h2>" +
+    "<p>" + escapeHtml(safe.description || "") + "</p>" +
+    "<div class=\"skills chip-wrap\">" + skills + "</div>" +
+    "<p class=\"hint\" style=\"margin-top:12px\">Why it helps: " + escapeHtml(safe.why_it_helps || "") + "</p>";
+}
+
+function renderAgentDetails(details) {
+  const titles = {
+    resume_analysis: "📄 Resume Analysis Agent",
+    github_analysis: "💻 GitHub Evidence Agent",
+    job_match: "🎯 Job Matching Agent",
+    skill_gaps: "📊 Skill Gap Agent"
+  };
+  $("agent-details").innerHTML = Object.keys(titles).map((key) => {
+    const json = JSON.stringify(details[key] || {}, null, 2);
+    return "<details><summary>" + titles[key] + " — output</summary><pre>" +
+      escapeHtml(json) + "</pre></details>";
+  }).join("");
+}
+
+/* ---------- reset ---------- */
+function resetUI() {
+  $("results").style.display = "none";
+  $("form-card").style.display = "block";
+  $("error").style.display = "none";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- wire up ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  checkHealth();
+  setupFileInput();
+  $("analyze-form").addEventListener("submit", submitAnalysis);
+  $("reset-btn").addEventListener("click", resetUI);
+});
+</script>
+</body>
+</html>

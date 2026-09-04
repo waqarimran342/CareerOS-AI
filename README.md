@@ -75,42 +75,32 @@ Five specialized AI agents work in parallel to provide comprehensive insights:
 
 ### Backend
 ```yaml
-Language: Python 3.8+
-Framework: FastAPI / Express.js
-Async: Celery / Bull
-API Format: REST
+Language: Python 3.9+
+Framework: FastAPI + Uvicorn
+API Format: REST (JSON + multipart file upload)
 ```
 
 ### AI & LLM
 ```yaml
-LLM: Claude API (Anthropic)
-Agent Framework: Custom Multi-Agent System
-Reasoning: Chain-of-Thought Prompting
-Model: Claude 3.5 Sonnet
+LLM: Google Gemini via the google-generativeai SDK
+Agent Framework: Custom Multi-Agent System (5 agents)
+Model: gemini-3.6-flash (configurable via GEMINI_MODEL)
 ```
 
-### Data & Storage
+### Data Sources
 ```yaml
-Database: PostgreSQL
-Cache: Redis
-File Storage: AWS S3 / Cloud Storage
-Data Processing: Pandas, NumPy
+Resume: PyPDF text extraction
+Code Evidence: GitHub REST API (public data)
 ```
 
 ### Frontend
 ```yaml
-Framework: React 18 / Vue 3
-Styling: Tailwind CSS
-Charts: Chart.js / Recharts
-UI Library: Shadcn/UI
+Stack: Plain HTML / CSS / JavaScript (single file, no build step)
 ```
 
 ### DevOps & Deployment
 ```yaml
-Containerization: Docker
-Orchestration: Kubernetes (optional)
-CI/CD: GitHub Actions
-Deployment: AWS / Vercel / Google Cloud
+Deployment: Any Python host (e.g. Alibaba Cloud ECS)
 ```
 
 ---
@@ -118,11 +108,9 @@ Deployment: AWS / Vercel / Google Cloud
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+ or Node.js 16+
-- PostgreSQL database
-- Redis instance
-- Claude API key from [Anthropic](https://console.anthropic.com/)
-- GitHub OAuth credentials (optional)
+- Python 3.9+
+- A Google AI API key (Gemini) — [create one here](https://aistudio.google.com/apikey)
+- A GitHub personal access token (optional — raises the API rate limit)
 
 ### Installation
 
@@ -147,25 +135,18 @@ Deployment: AWS / Vercel / Google Cloud
    ```bash
    cp .env.example .env
    # Edit .env with your credentials:
-   # - CLAUDE_API_KEY=sk-...
-   # - DATABASE_URL=postgresql://...
-   # - REDIS_URL=redis://...
-   # - GITHUB_TOKEN=ghp_...
+   # - GOOGLE_API_KEY=...        (Google AI Studio — required)
+   # - GITHUB_TOKEN=ghp_...       (optional)
    ```
 
-5. **Setup database**
-   ```bash
-   python scripts/init_db.py
-   ```
-
-6. **Run the application**
+5. **Run the application**
    ```bash
    python src/main.py
    ```
 
-7. **Access the app**
-   - Web UI: `http://localhost:3000`
-   - API Docs: `http://localhost:8000/docs`
+6. **Access the app**
+   - Web UI: `http://127.0.0.1:8000`
+   - API Docs: `http://127.0.0.1:8000/docs`
 
 ---
 
@@ -173,41 +154,18 @@ Deployment: AWS / Vercel / Google Cloud
 
 ### Basic Analysis
 
+The easiest way is the web UI — open `http://127.0.0.1:8000`, upload a resume
+PDF, enter your GitHub username and target role, and the 5-agent pipeline
+returns your full career readiness report.
+
+You can also call the API directly (multipart form):
+
 ```bash
-# Via API
 curl -X POST http://localhost:8000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "resume": "resume text here",
-    "github_username": "yourusername",
-    "target_role": "Senior Full-Stack Developer"
-  }'
-```
-
-### Using Python Client
-
-```python
-from careeros import CareerOSClient
-
-client = CareerOSClient(api_key="your-api-key")
-
-# Analyze a user
-result = client.analyze(
-    resume_text="...",
-    github_username="yourusername",
-    target_role="Senior Full-Stack Developer",
-    target_companies=["Google", "Meta", "Amazon"]
-)
-
-# Get career roadmap
-roadmap = client.get_career_roadmap(user_id="user123")
-
-# Start mock interview
-interview = client.start_mock_interview(
-    user_id="user123",
-    role="Senior Full-Stack Developer",
-    duration_minutes=30
-)
+  -F "resume=@my_resume.pdf" \
+  -F "github_username=yourusername" \
+  -F "target_role=Senior Full-Stack Developer" \
+  -F "job_description=Optional job description text..."
 ```
 
 ---
@@ -223,68 +181,24 @@ careeros-ai/
 ├── .env.example                 # Environment variables template
 │
 ├── src/
-│   ├── main.py                 # Application entry point
-│   ├── config.py               # Configuration management
-│   │
-│   ├── agents/                 # Multi-agent system
-│   │   ├── base.py            # Base agent class
-│   │   ├── resume_analyzer.py  # Resume analysis agent
-│   │   ├── github_analyzer.py  # GitHub analysis agent
-│   │   ├── job_matcher.py      # Job matching agent
-│   │   ├── skill_gap_detector.py # Skill gap analysis
-│   │   ├── roadmap_generator.py # Roadmap generation
-│   │   └── master_agent.py     # Master orchestrator
-│   │
-│   ├── core/
-│   │   ├── llm.py             # Claude API wrapper
-│   │   ├── prompts.py         # Prompt templates
-│   │   ├── utils.py           # Utility functions
-│   │   └── parsers.py         # Data parsers
-│   │
-│   ├── api/
-│   │   ├── routes.py          # API endpoints
-│   │   ├── models.py          # Request/response models
-│   │   └── auth.py            # Authentication
-│   │
-│   ├── services/
-│   │   ├── github_service.py  # GitHub API integration
-│   │   ├── resume_service.py  # Resume processing
-│   │   └── database.py        # Database operations
-│   │
-│   └── frontend/
-│       ├── src/
-│       │   ├── App.jsx
-│       │   ├── components/
-│       │   ├── pages/
-│       │   └── services/
-│       └── public/
+│   ├── main.py                 # FastAPI app: /api/analyze + web UI
+│   ├── config.py               # Settings from environment variables
+│   ├── agents.py               # The 5 AI agents + pipeline orchestration
+│   ├── qwen_client.py          # Gemini LLM client (google-generativeai SDK)
+│   ├── github_service.py       # GitHub REST API evidence fetching
+│   ├── resume_service.py       # PDF text extraction (PyPDF)
+│   └── static/
+│       └── index.html          # Single-page frontend (no build step)
 │
 ├── tests/
-│   ├── test_agents.py         # Unit tests for agents
-│   ├── test_api.py            # API endpoint tests
-│   ├── test_integration.py    # Integration tests
-│   └── fixtures/              # Test data
+│   └── test_pipeline.py        # Offline unit tests (no API key needed)
 │
 ├── docs/
-│   ├── architecture.md        # System architecture
-│   ├── api-reference.md       # API documentation
-│   ├── setup.md               # Setup guide
-│   ├── agents.md              # Agent documentation
-│   └── examples.md            # Usage examples
+│   ├── architecture.md         # System architecture
+│   ├── api-reference.md        # API documentation
+│   └── setup.md                # Setup guide
 │
-├── scripts/
-│   ├── init_db.py            # Database initialization
-│   ├── seed_data.py          # Seed sample data
-│   └── migration.py          # Database migrations
-│
-├── docker/
-│   ├── Dockerfile            # Docker configuration
-│   └── docker-compose.yml    # Docker Compose setup
-│
-└── examples/
-    ├── sample_resume.txt     # Example resume
-    ├── sample_analysis.json  # Example output
-    └── demo_script.py        # Demo usage
+└── examples/                   # Example inputs for demos
 ```
 
 ---
@@ -308,7 +222,7 @@ Analyzer Analyzer Matcher Detector
     │       │       │       │       │
     └───────┴───────┴───────┴───────┘
             ↓
-    Claude API (Reasoning)
+    Gemini API (Google — Reasoning)
             ↓
     Data Synthesis
             ↓
@@ -372,56 +286,42 @@ pytest tests/ --cov=src --cov-report=html
 ## 📚 API Documentation
 
 ### POST /api/analyze
-Analyze a user's career profile
+Run the full 5-agent career analysis (multipart form).
 
-**Request:**
+**Request fields:**
+- `resume` — resume PDF file (required)
+- `github_username` — public GitHub username (required)
+- `target_role` — role to match against (required)
+- `job_description` — job description text (optional)
+
+**Response (abbreviated):**
 ```json
 {
-  "resume": "string",
-  "github_username": "string",
-  "target_role": "string",
-  "target_companies": ["string"]
+  "status": "success",
+  "target_role": "Senior Full-Stack Developer",
+  "github_username": "yourusername",
+  "analysis": {
+    "career_readiness_score": 75,
+    "score_breakdown": {"resume_quality": 70, "evidence_strength": 80, "job_match": 75, "skill_coverage": 60},
+    "verified_skills": [{"skill": "Python", "evidence": "12 repos, mostly Python"}],
+    "unverified_skills": [{"skill": "Kubernetes", "reason": "no repos found using it"}],
+    "strengths": ["..."],
+    "skill_gaps": ["..."],
+    "evidence": [{"source": "github", "detail": "..."}],
+    "recommendations": ["..."],
+    "roadmap_30_days": [{"week": 1, "focus": "...", "tasks": ["..."], "outcome": "..."}],
+    "recommended_project": {"title": "...", "description": "..."},
+    "hiring_readiness_summary": "..."
+  },
+  "agent_details": {"resume_analysis": {}, "github_analysis": {}, "job_match": {}, "skill_gaps": {}}
 }
 ```
 
-**Response:**
-```json
-{
-  "career_readiness_score": 75,
-  "resume_analysis": {...},
-  "github_analysis": {...},
-  "job_match_score": 82,
-  "skill_gaps": [...],
-  "strengths": [...],
-  "recommendations": [...]
-}
-```
+### GET /health
+Status check — also reports whether the Qwen API key is configured.
 
-### GET /api/roadmap/{user_id}
-Get personalized career roadmap
-
-**Response:**
-```json
-{
-  "roadmap_id": "string",
-  "duration_weeks": 12,
-  "milestones": [...],
-  "resources": [...],
-  "estimated_completion": "2024-12-31"
-}
-```
-
-### POST /api/interview
-Start mock interview
-
-**Request:**
-```json
-{
-  "user_id": "string",
-  "role": "string",
-  "difficulty": "medium"
-}
-```
+> **Note:** `GET /api/roadmap/{user_id}` and `POST /api/interview` are planned
+> features (see Future Features) and are not implemented yet.
 
 See [API Reference](docs/api-reference.md) for complete documentation.
 
@@ -511,7 +411,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ## 🎓 Acknowledgments
 
 - **Alibaba Cloud** - For hosting AI Hackathon Pakistan 2026
-- **Anthropic** - For Claude API and multi-agent support
+- **Google Gemini** - For the LLM powering all five agents
 - **Open Source Community** - For libraries and tools
 - **Mentors & Judges** - For guidance and feedback
 

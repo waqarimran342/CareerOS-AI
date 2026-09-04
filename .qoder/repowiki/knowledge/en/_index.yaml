@@ -1,0 +1,22 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: main
+nodes_managed: true
+exported_at: "2026-09-04T09:03:17Z"
+modules:
+    "":
+        dir_name: CareerOS AI Multi-Agent Career Intelligence Platform
+        title: CareerOS AI Multi-Agent Career Intelligence Platform
+        scope:
+            - .
+            - .env.example
+            - .gitignore
+            - CONTRIBUTING.md
+            - LICENSE
+            - README.md
+            - requirements.txt
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

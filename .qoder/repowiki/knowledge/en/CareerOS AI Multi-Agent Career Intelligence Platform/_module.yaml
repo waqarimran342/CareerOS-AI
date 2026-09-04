@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: ""
+title: CareerOS AI Multi-Agent Career Intelligence Platform
+scope:
+    - .
+    - .env.example
+    - .gitignore
+    - CONTRIBUTING.md
+    - LICENSE
+    - README.md
+    - requirements.txt
+source_files: []
+depends_on: []
+related_to: []

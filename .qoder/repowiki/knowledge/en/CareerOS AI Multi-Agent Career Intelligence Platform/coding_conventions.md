@@ -1,0 +1,5 @@
+- Each external dependency (Qwen, GitHub, PDF) is wrapped in its own module that raises a dedicated exception subclass (`QwenError`, `GitHubError`, `ResumeError`) so the FastAPI layer can map failures to specific HTTP status codes.
+- Every agent class exposes a uniform interface: a `name` class attribute and a `run(...)` method returning a plain `Dict[str, Any]`, enabling the orchestrator to compose them without knowing their internals.
+- Agents communicate exclusively through structured JSON prompts: system prompts declare the exact output schema, and `QwenClient.chat_json` enforces it by appending shared JSON rules and parsing the response with `extract_json_object`.
+- All configuration is read from environment variables through a single `config.settings` instance; no secrets are hard-coded and defaults are provided for every setting.
+- Prompt payloads are built by f-string interpolation of input data into clearly delimited sections (e.g., triple-quoted blocks around resume/GitHub text), keeping each agent's prompt self-contained and reproducible.
