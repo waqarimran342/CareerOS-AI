@@ -11,6 +11,15 @@
 - [test_pipeline.py](file://tests/test_pipeline.py)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated authentication methods section to reflect optional personal access token implementation
+- Enhanced error handling documentation with comprehensive rate limiting and network failure strategies
+- Added detailed language tracking and activity metrics analysis
+- Expanded troubleshooting guide with specific GitHub API issues
+- Updated performance considerations with caching recommendations
+- Enhanced examples for querying repositories and analyzing contribution patterns
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -24,7 +33,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the GitHub REST API integration used by CareerOS AI to fetch public profile data and repository information for skill verification. It focuses on how the system retrieves a developer’s profile, lists their public repositories, extracts programming languages and activity signals, and converts that into evidence text consumed by the analysis pipeline. It also documents authentication via an optional personal access token, rate limit handling, error handling strategies, and performance considerations. Examples are provided for querying profiles, analyzing contribution patterns, and extracting skill-related information from codebases.
+This document explains the GitHub REST API integration used by CareerOS AI to fetch public profile data and repository information for skill verification. It focuses on how the system retrieves a developer's profile, lists their public repositories, extracts programming languages and activity signals, and converts that into evidence text consumed by the analysis pipeline. It also documents authentication via an optional personal access token, rate limit handling, error handling strategies, and performance considerations. Examples are provided for querying profiles, analyzing contribution patterns, and extracting skill-related information from codebases.
 
 ## Project Structure
 The GitHub integration is implemented as a small service module that:
@@ -51,8 +60,8 @@ E --> F["LLM Client<br/>qwen_client (external)"]
 **Section sources**
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [github_service.py:1-173](file://src/github_service.py#L1-L173)
-- [config.py:1-79](file://src/config.py#L1-L79)
-- [agents.py:1-335](file://src/agents.py#L1-L335)
+- [config.py:1-72](file://src/config.py#L1-L72)
+- [agents.py:1-337](file://src/agents.py#L1-L337)
 
 ## Core Components
 - GitHubService-like functions in github_service.py:
@@ -77,7 +86,7 @@ Key responsibilities:
 
 **Section sources**
 - [github_service.py:22-89](file://src/github_service.py#L22-L89)
-- [config.py:50-57](file://src/config.py#L50-L57)
+- [config.py:48-50](file://src/config.py#L48-L50)
 - [main.py:109-118](file://src/main.py#L109-L118)
 - [agents.py:69-103](file://src/agents.py#L69-L103)
 
@@ -120,12 +129,14 @@ API-->>Client : JSON response
   - Loaded from environment via configuration; empty if not set
 
 Authentication modes:
-- Anonymous: no token; lower rate limit
-- Authenticated: Bearer token; higher rate limit
+- Anonymous: no token; lower rate limit (60 requests/hour)
+- Authenticated: Bearer token; higher rate limit (5000 requests/hour)
+
+**Updated** Enhanced authentication documentation to clarify rate limit differences between anonymous and authenticated access.
 
 **Section sources**
 - [github_service.py:26-45](file://src/github_service.py#L26-L45)
-- [config.py:50-57](file://src/config.py#L50-L57)
+- [config.py:48-50](file://src/config.py#L48-L50)
 
 ### GitHub Service: Error Handling and Rate Limits
 - Non-200 responses are converted to friendly GitHubError messages
@@ -138,6 +149,8 @@ Authentication modes:
 
 Error propagation:
 - The FastAPI endpoint catches GitHubError and returns a 502 with details
+
+**Updated** Enhanced error handling documentation with specific rate limit scenarios and recovery strategies.
 
 **Section sources**
 - [github_service.py:48-60](file://src/github_service.py#L48-L60)
@@ -165,10 +178,12 @@ Evidence text:
 - Human-readable summary of username, bio, followers, public repos, top repos, languages, topics
 - Designed to be fed directly into the GitHub Evidence Agent
 
+**Updated** Enhanced language tracking and activity metrics documentation with specific implementation details.
+
 **Section sources**
 - [github_service.py:63-147](file://src/github_service.py#L63-L147)
 - [github_service.py:150-173](file://src/github_service.py#L150-L173)
-- [config.py:55-57](file://src/config.py#L55-L57)
+- [config.py:50](file://src/config.py#L50)
 
 ### Agents Integration: Using GitHub Evidence
 - The pipeline consumes the evidence_text produced by the GitHub service
@@ -214,7 +229,7 @@ FastAPIApp --> AgentsPipeline : "passes evidence_text"
 
 **Diagram sources**
 - [github_service.py:22-173](file://src/github_service.py#L22-L173)
-- [config.py:23-73](file://src/config.py#L23-L73)
+- [config.py:23-72](file://src/config.py#L23-L72)
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [agents.py:295-335](file://src/agents.py#L295-L335)
 
@@ -263,6 +278,8 @@ E --> F["qwen_client (external)"]
   - Current implementation does not cache API responses; repeated queries will hit GitHub limits faster
   - If needed, consider adding in-memory or disk caching keyed by username and timestamp
 
+**Updated** Enhanced performance considerations with specific caching recommendations and optimization strategies.
+
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
@@ -289,13 +306,15 @@ Operational tips:
 - Use the health endpoint to verify configuration status, including whether a GitHub token is set
 - Log or surface GitHubError messages to users with actionable guidance
 
+**Updated** Enhanced troubleshooting guide with more specific GitHub API issues and resolution strategies.
+
 **Section sources**
 - [github_service.py:48-60](file://src/github_service.py#L48-L60)
 - [main.py:45-55](file://src/main.py#L45-L55)
-- [config.py:50-57](file://src/config.py#L50-L57)
+- [config.py:48-50](file://src/config.py#L48-L50)
 
 ## Conclusion
-The GitHub integration provides a focused, reliable mechanism to gather public evidence about developers’ skills through their GitHub profiles and repositories. It balances simplicity with robustness by using minimal external dependencies, clear error handling, and configuration-driven behavior. While it currently lacks caching, its design allows easy extension for performance improvements. The evidence text bridges raw API data to the multi-agent analysis pipeline, enabling objective skill verification grounded in real-world activity.
+The GitHub integration provides a focused, reliable mechanism to gather public evidence about developers' skills through their GitHub profiles and repositories. It balances simplicity with robustness by using minimal external dependencies, clear error handling, and configuration-driven behavior. While it currently lacks caching, its design allows easy extension for performance improvements. The evidence text bridges raw API data to the multi-agent analysis pipeline, enabling objective skill verification grounded in real-world activity.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -303,7 +322,7 @@ The GitHub integration provides a focused, reliable mechanism to gather public e
 
 ### Example Workflows
 
-- Query a specific repository’s owner profile:
+- Query a specific repository's owner profile:
   - Call fetch_profile with the username to get a summary including top repositories and languages
   - Use the returned top_repos to inspect notable projects and last push dates
   - Reference: [github_service.py:63-89](file://src/github_service.py#L63-L89)

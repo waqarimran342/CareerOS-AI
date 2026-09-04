@@ -10,6 +10,15 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated LLM integration from Qwen to Google Gemini for resume text extraction and skill identification
+- Enhanced skeptical technical recruiter persona with precise and skeptical approach
+- Improved ATS-focused analysis with explicit quality notes and keyword-oriented skill extraction
+- Refined structured JSON output schema with specific field constraints
+- Updated API orchestration to work with Gemini client instead of Qwen client
+- Corrected model references throughout the documentation
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -22,7 +31,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-The Resume Analysis Agent is the first stage of the CareerOS AI pipeline. It ingests a resume PDF, extracts plain text, and uses specialized prompt engineering to produce a structured JSON profile of the candidate’s claimed skills, experience, education, and quality notes. The agent adopts a skeptical technical recruiter persona to ensure only visible, resume-backed claims are reported. Its output becomes the baseline claim set that later stages cross-reference against GitHub evidence to distinguish verified from unverified skills.
+The Resume Analysis Agent is the first stage of the CareerOS AI pipeline. It ingests a resume PDF, extracts plain text, and uses specialized prompt engineering with Google Gemini to produce a structured JSON profile of the candidate's claimed skills, experience, education, and quality notes. The agent adopts a skeptical technical recruiter persona to ensure only visible, resume-backed claims are reported. Its output becomes the baseline claim set that later stages cross-reference against GitHub evidence to distinguish verified from unverified skills.
 
 ## Project Structure
 CareerOS AI is a FastAPI application with a multi-agent orchestration layer. The Resume Analysis Agent lives in the agents module and is invoked by the API endpoint after resume text extraction and optional GitHub data gathering.
@@ -33,8 +42,8 @@ Client["Client (Browser or API caller)"] --> API["FastAPI /api/analyze"]
 API --> ResumeSvc["Resume Service<br/>extract_text_from_pdf()"]
 API --> Agents["Agents Orchestrator<br/>run_full_analysis()"]
 Agents --> ResumeAgent["ResumeAnalysisAgent.run()"]
-ResumeAgent --> Qwen["QwenClient.chat_json()"]
-Qwen --> LLM["Qwen Model Studio"]
+ResumeAgent --> Gemini["GeminiClient.chat_json()"]
+Gemini --> LLM["Google Gemini Model"]
 ResumeSvc --> |PDF bytes| ResumeSvc
 ```
 
@@ -49,11 +58,11 @@ ResumeSvc --> |PDF bytes| ResumeSvc
 - [README.md:173-202](file://README.md#L173-L202)
 
 ## Core Components
-- Resume Analysis Agent: Builds a system prompt positioning the model as a skeptical technical recruiter and a user prompt that includes the target role and resume text. It requests a strict JSON schema for consistent downstream processing.
-- Resume Service: Extracts text from uploaded PDFs, validates content, and truncates long resumes to control prompt size and cost.
-- Qwen Client: Wraps the OpenAI-compatible Qwen API, enforces shared JSON output rules, and retries once if the response is not valid JSON.
-- Configuration: Centralizes environment-driven settings such as model selection, token limits, timeouts, and resume size constraints.
-- API Endpoint: Validates inputs, orchestrates evidence collection, runs the full agent pipeline, and returns both the headline report and per-agent outputs.
+- **Resume Analysis Agent**: Builds a system prompt positioning the model as a skeptical technical recruiter and a user prompt that includes the target role and resume text. It requests a strict JSON schema for consistent downstream processing using Google Gemini.
+- **Resume Service**: Extracts text from uploaded PDFs, validates content, and truncates long resumes to control prompt size and cost.
+- **Gemini Client**: Wraps the Google Gemini API through the google-generativeai SDK, enforces shared JSON output rules, and retries once if the response is not valid JSON.
+- **Configuration**: Centralizes environment-driven settings such as model selection, token limits, timeouts, and resume size constraints.
+- **API Endpoint**: Validates inputs, orchestrates evidence collection, runs the full agent pipeline, and returns both the headline report and per-agent outputs.
 
 Key responsibilities:
 - Enforce ATS-focused analysis via explicit resume quality notes and keyword-oriented skill extraction.
@@ -68,7 +77,7 @@ Key responsibilities:
 - [main.py:58-147](file://src/main.py#L58-L147)
 
 ## Architecture Overview
-The Resume Analysis Agent is part of a five-agent pipeline. In this stage, it produces the “claimed” profile that subsequent agents compare with GitHub-derived “verified” skills and job requirements.
+The Resume Analysis Agent is part of a five-agent pipeline. In this stage, it produces the "claimed" profile that subsequent agents compare with GitHub-derived "verified" skills and job requirements.
 
 ```mermaid
 sequenceDiagram
@@ -77,17 +86,17 @@ participant API as "FastAPI /api/analyze"
 participant RS as "ResumeService"
 participant AG as "Agents Orchestrator"
 participant RA as "ResumeAnalysisAgent"
-participant QC as "QwenClient"
-participant LLM as "Qwen Model"
+participant GC as "GeminiClient"
+participant GM as "Google Gemini"
 U->>API : POST /api/analyze (resume PDF, target_role, github_username, optional job_description)
 API->>RS : extract_text_from_pdf(resume_bytes)
 RS-->>API : resume_text (truncated if needed)
 API->>AG : run_full_analysis(resume_text, github_profile, target_role, job_description)
 AG->>RA : run(resume_text, target_role)
-RA->>QC : chat_json(system_prompt, user_prompt)
-QC->>LLM : Chat completion with strict JSON rules
-LLM-->>QC : JSON object
-QC-->>RA : Dict result
+RA->>GC : chat_json(system_prompt, user_prompt)
+GC->>GM : Chat completion with strict JSON rules
+GM-->>GC : JSON object
+GC-->>RA : Dict result
 RA-->>AG : resume_analysis
 AG-->>API : results (includes resume_analysis)
 API-->>U : {status, analysis, agent_details}
@@ -113,7 +122,7 @@ Prompt design:
 - Output schema specifies fields: candidate_name, summary, years_of_experience, claimed_skills (up to 20), education, experience_highlights (up to 5), resume_quality_notes (up to 5).
 
 Processing flow:
-- The agent calls QwenClient.chat_json with the system and user prompts.
+- The agent calls GeminiClient.chat_json with the system and user prompts.
 - The client appends shared JSON rules to enforce single-object JSON responses without markdown or commentary.
 - If the first response is invalid JSON, the client retries once with a repair message before raising an error.
 
@@ -122,10 +131,10 @@ flowchart TD
 Start(["ResumeAnalysisAgent.run"])
 BuildSystem["Build system prompt:<br/>skeptical recruiter persona"]
 BuildUser["Build user prompt:<br/>target role + resume text"]
-CallQwen["Call QwenClient.chat_json"]
+CallGemini["Call GeminiClient.chat_json"]
 ParseJSON["Parse JSON response<br/>with fallback repair"]
 ReturnDict["Return structured dict"]
-Start --> BuildSystem --> BuildUser --> CallQwen --> ParseJSON --> ReturnDict
+Start --> BuildSystem --> BuildUser --> CallGemini --> ParseJSON --> ReturnDict
 ```
 
 **Diagram sources**
@@ -171,19 +180,19 @@ Truncate -- No --> ReturnText
 **Section sources**
 - [resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 
-### Qwen Client and JSON Enforcement
+### Gemini Client and JSON Enforcement
 Responsibilities:
-- Wrap the OpenAI-compatible Qwen API with consistent configuration from settings.
+- Wrap the Google Gemini API with consistent configuration from settings.
 - Append shared JSON output rules to every system prompt to guarantee parseable JSON.
 - Attempt one retry with a repair message if the initial response is not valid JSON.
 
 Robustness:
-- Catches network/auth errors and raises a typed QwenError with actionable details.
+- Catches network/auth errors and raises a typed GeminiError with actionable details.
 - Extracts JSON even when wrapped in markdown fences or surrounded by chatter.
 
 **Section sources**
-- [qwen_client.py:31-67](file://src/qwen_client.py#L31-L67)
-- [qwen_client.py:97-157](file://src/qwen_client.py#L97-L157)
+- [qwen_client.py:31-67](file://src/qwen_client.py#L31-67)
+- [qwen_client.py:97-157](file://src/qwen_client.py#L97-157)
 
 ### API Orchestration and Data Flow
 Responsibilities:
@@ -196,13 +205,13 @@ Integration points:
 - Maps service exceptions to appropriate HTTP status codes.
 
 **Section sources**
-- [main.py:58-147](file://src/main.py#L58-L147)
-- [config.py:23-79](file://src/config.py#L23-L79)
+- [main.py:58-147](file://src/main.py#L58-147)
+- [config.py:23-79](file://src/config.py#L23-79)
 
 ## Dependency Analysis
 The Resume Analysis Agent depends on:
 - Resume Service for PDF text extraction and truncation.
-- Qwen Client for LLM interaction and JSON enforcement.
+- Gemini Client for LLM interaction and JSON enforcement.
 - Configuration for runtime parameters.
 - API Layer for input validation and orchestration.
 
@@ -210,32 +219,30 @@ The Resume Analysis Agent depends on:
 graph LR
 Main["main.py"] --> ResumeSvc["resume_service.py"]
 Main --> Agents["agents.py"]
-Agents --> Qwen["qwen_client.py"]
+Agents --> Gemini["qwen_client.py"]
 Agents --> Config["config.py"]
 ResumeSvc --> Config
 ```
 
 **Diagram sources**
-- [main.py:17-21](file://src/main.py#L17-L21)
-- [agents.py:21-24](file://src/agents.py#L21-L24)
-- [resume_service.py:9-14](file://src/resume_service.py#L9-L14)
-- [qwen_client.py:18-24](file://src/qwen_client.py#L18-L24)
-- [config.py:11-20](file://src/config.py#L11-L20)
+- [main.py:17-21](file://src/main.py#L17-21)
+- [agents.py:21-24](file://src/agents.py#L21-24)
+- [resume_service.py:9-14](file://src/resume_service.py#L9-14)
+- [qwen_client.py:18-24](file://src/qwen_client.py#L18-24)
+- [config.py:11-20](file://src/config.py#L11-20)
 
 **Section sources**
-- [main.py:17-21](file://src/main.py#L17-L21)
-- [agents.py:21-24](file://src/agents.py#L21-L24)
-- [resume_service.py:9-14](file://src/resume_service.py#L9-L14)
-- [qwen_client.py:18-24](file://src/qwen_client.py#L18-L24)
-- [config.py:11-20](file://src/config.py#L11-L20)
+- [main.py:17-21](file://src/main.py#L17-21)
+- [agents.py:21-24](file://src/agents.py#L21-24)
+- [resume_service.py:9-14](file://src/resume_service.py#L9-14)
+- [qwen_client.py:18-24](file://src/qwen_client.py#L18-24)
+- [config.py:11-20](file://src/config.py#L11-20)
 
 ## Performance Considerations
 - Resume truncation: Long resumes are truncated at a configurable character limit to reduce prompt size and cost while preserving key information.
-- Token budgeting: The Qwen client respects configured max tokens; the Master agent explicitly sets a higher limit where needed.
+- Token budgeting: The Gemini client respects configured max tokens; the Master agent explicitly sets a higher limit where needed.
 - Retry logic: One retry on invalid JSON reduces failure rate without excessive overhead.
 - Server threading: The FastAPI endpoint runs synchronously in a worker thread to avoid blocking during LLM calls.
-
-[No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -245,7 +252,7 @@ Common issues and resolutions:
   - Resolution: Upload a text-based PDF.
 - Missing or misconfigured API key:
   - Symptom: 503 error stating the AI model is not configured.
-  - Cause: DASHSCOPE_API_KEY not set in environment.
+  - Cause: GOOGLE_API_KEY not set in environment.
   - Resolution: Create .env with the correct key and restart the server.
 - LLM JSON parsing failures:
   - Symptom: Errors about invalid JSON from the model.
@@ -257,9 +264,9 @@ Operational checks:
 - Inspect agent_details in the API response to inspect raw outputs from each agent.
 
 **Section sources**
-- [resume_service.py:17-49](file://src/resume_service.py#L17-L49)
-- [main.py:100-131](file://src/main.py#L100-L131)
-- [qwen_client.py:120-157](file://src/qwen_client.py#L120-L157)
+- [resume_service.py:17-49](file://src/resume_service.py#L17-49)
+- [main.py:100-131](file://src/main.py#L100-131)
+- [qwen_client.py:120-157](file://src/qwen_client.py#L120-157)
 
 ## Conclusion
-The Resume Analysis Agent establishes a rigorous, ATS-aware baseline of what a candidate claims from their resume. By enforcing a skeptical recruiter persona, constraining outputs to a strict JSON schema, and focusing on visible skills and quality notes, it creates a reliable foundation for later cross-referencing against GitHub evidence. This ensures that final assessments differentiate between claimed and proven capabilities, enabling more accurate readiness scoring and targeted development roadmaps.
+The Resume Analysis Agent establishes a rigorous, ATS-aware baseline of what a candidate claims from their resume. By enforcing a skeptical recruiter persona, constraining outputs to a strict JSON schema, and focusing on visible skills and quality notes, it creates a reliable foundation for later cross-referencing against GitHub evidence. This ensures that final assessments differentiate between claimed and proven capabilities, enabling more accurate readiness scoring and targeted development roadmaps. The integration with Google Gemini provides robust natural language processing capabilities for accurate resume analysis and skill identification.

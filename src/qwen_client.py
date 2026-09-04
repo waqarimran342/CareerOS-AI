@@ -21,6 +21,7 @@ Usage:
 
 import json
 import re
+import time
 from typing import Any, Dict, Optional
 
 import google.generativeai as genai
@@ -30,6 +31,37 @@ import config
 
 class GeminiError(Exception):
     """Raised when the LLM call fails or returns unusable output."""
+
+
+# The Gemini FREE tier allows only a few requests per minute (5/min for
+# flash models like gemini-3.6-flash). One full CareerOS analysis makes
+# exactly 5 LLM calls, so running two analyses back-to-back can hit a 429
+# "ResourceExhausted" quota error. Those errors are temporary — the API
+# message even says how long to wait — so we retry automatically instead
+# of failing the whole analysis.
+RATE_LIMIT_MAX_RETRIES = 4
+RATE_LIMIT_FALLBACK_WAIT_SECONDS = 15  # used when the error has no "retry in Xs" hint
+RATE_LIMIT_MAX_WAIT_SECONDS = 60
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    """Return True when an exception looks like a 429 quota / rate-limit error."""
+    # google.api_core exposes the HTTP status as .code (429 = Too Many
+    # Requests); SDK versions differ, so also match on the error text.
+    if getattr(exc, "code", None) == 429:
+        return True
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return (
+        "429" in text
+        or "resourceexhausted" in text
+        or "exceeded your current quota" in text
+    )
+
+
+def _extract_retry_seconds(exc: Exception) -> Optional[float]:
+    """Pull the 'Please retry in Xs' hint out of a quota error, if present."""
+    match = re.search(r"retry in ([0-9.]+)\s*s", str(exc), re.IGNORECASE)
+    return float(match.group(1)) if match else None
 
 
 # Every prompt gets the same strict output rules appended, so Gemini always
@@ -95,6 +127,53 @@ class GeminiClient:
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name=self.model_name)
 
+    def _generate_content(
+        self, agent_name: str, prompt: str, generation_config: Dict[str, Any]
+    ) -> str:
+        """
+        Call Gemini once, retrying automatically on 429 rate-limit errors.
+
+        Free-tier quota errors are temporary: the API's message even says
+        "Please retry in Xs", so we sleep that long (plus a small buffer)
+        and try again instead of failing the whole analysis.
+        """
+        for attempt in range(RATE_LIMIT_MAX_RETRIES + 1):
+            try:
+                response = self.model.generate_content(
+                    prompt,
+                    generation_config=generation_config,
+                )
+            except Exception as exc:
+                if not _is_rate_limit_error(exc):
+                    # Covers auth errors, bad model names, timeouts, network...
+                    raise GeminiError(
+                        f"{agent_name}: Gemini API call failed ({type(exc).__name__}: {exc}). "
+                        "Check GOOGLE_API_KEY, GEMINI_MODEL and your network."
+                    ) from exc
+
+                if attempt >= RATE_LIMIT_MAX_RETRIES:
+                    raise GeminiError(
+                        f"{agent_name}: still rate-limited after "
+                        f"{RATE_LIMIT_MAX_RETRIES} retries ({type(exc).__name__}: {exc}). "
+                        "The Gemini free tier allows only a few requests per minute — "
+                        "wait about a minute and run the analysis again. Details: "
+                        "https://ai.google.dev/gemini-api/docs/rate-limits"
+                    ) from exc
+
+                wait = _extract_retry_seconds(exc)
+                if wait is None:
+                    wait = RATE_LIMIT_FALLBACK_WAIT_SECONDS * (attempt + 1)
+                wait = min(wait + 0.5, RATE_LIMIT_MAX_WAIT_SECONDS)
+                time.sleep(wait)
+                continue
+
+            try:
+                # response.text raises ValueError when the reply is empty
+                # or was blocked by safety filters.
+                return (response.text or "").strip()
+            except (ValueError, AttributeError):
+                return ""
+
     def chat_json(
         self,
         agent_name: str,
@@ -108,8 +187,9 @@ class GeminiClient:
 
         generate_content() has no separate system/user roles, so the system
         prompt, the shared JSON rules and the user prompt are combined into
-        one message. If the first answer is not valid JSON, we ask Gemini
-        once more to fix its own formatting before giving up.
+        one message. Rate-limit (429) errors are retried automatically in
+        _generate_content; if the first answer is not valid JSON, we ask
+        Gemini once more to fix its own formatting before giving up.
         """
         prompt = f"{system_prompt}\n\n{SHARED_JSON_RULES}\n\n{user_prompt}"
 
@@ -122,25 +202,7 @@ class GeminiClient:
 
         last_raw = ""
         for attempt in range(2):  # 1 normal try + 1 repair try
-            try:
-                response = self.model.generate_content(
-                    prompt,
-                    generation_config=generation_config,
-                )
-            except Exception as exc:
-                # Covers auth errors, rate limits, timeouts, network issues...
-                raise GeminiError(
-                    f"{agent_name}: Gemini API call failed ({type(exc).__name__}: {exc}). "
-                    "Check GOOGLE_API_KEY, GEMINI_MODEL and your network."
-                ) from exc
-
-            last_raw = ""
-            try:
-                # response.text raises ValueError when the reply is empty
-                # or was blocked by safety filters.
-                last_raw = (response.text or "").strip()
-            except (ValueError, AttributeError):
-                last_raw = ""
+            last_raw = self._generate_content(agent_name, prompt, generation_config)
 
             try:
                 return extract_json_object(last_raw)

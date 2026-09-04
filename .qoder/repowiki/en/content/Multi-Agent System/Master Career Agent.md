@@ -12,6 +12,15 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Enhanced MasterCareerAgent with comprehensive evidence-based synthesis methodology
+- Implemented weighted readiness scoring system with detailed breakdown
+- Added verified vs unverified skill classification with concrete evidence tracking
+- Developed comprehensive 30-day roadmap generation with weekly tasks and outcomes
+- Strengthened cross-validation between resume claims and GitHub evidence
+- Enhanced output structure with hiring readiness assessment and project recommendations
+
 ## Table of Contents
 1. Introduction
 2. Project Structure
@@ -25,7 +34,7 @@
 10. Appendices
 
 ## Introduction
-This document explains the Master Career Agent, the final synthesis stage that combines outputs from four specialist agents into a single, evidence-based career intelligence report. The system’s core principle is strict verification: a skill is considered verified only when it is both claimed in the resume and proven by real GitHub activity. The Master agent orchestrates this cross-check to produce honest, realistic assessments, including a weighted readiness score, verified and unverified skills, strengths, gaps, evidence citations, recommendations, and a 4-week roadmap with weekly tasks and outcomes.
+This document explains the Master Career Agent, the final synthesis stage that combines outputs from four specialist agents into a single, evidence-based career intelligence report. The system's core principle is strict verification: a skill is considered verified only when it is both claimed in the resume and proven by real GitHub activity. The Master agent orchestrates this cross-check to produce honest, realistic assessments, including a weighted readiness score, verified and unverified skills, strengths, gaps, evidence citations, recommendations, and a comprehensive 4-week roadmap with weekly tasks and outcomes.
 
 ## Project Structure
 The application is a FastAPI service that exposes an analysis endpoint. It orchestrates five specialized AI agents via a Qwen client, enriching inputs with resume text extraction and GitHub profile data.
@@ -60,13 +69,13 @@ MAgent --> LLM
 - [README.md:173-258](file://README.md#L173-L258)
 
 ## Core Components
-- Resume Analysis Agent: Extracts claimed skills and experience from resume text.
-- GitHub Evidence Agent: Derives verified skills from public GitHub activity.
-- Job Matching Agent: Matches candidate against target role requirements.
-- Skill Gap Agent: Identifies and prioritizes missing competencies.
-- Master Career Agent: Synthesizes all outputs into the final report with a weighted readiness score, verified/unverified skills, strengths, gaps, evidence, recommendations, and a 4-week roadmap.
+- **Resume Analysis Agent**: Extracts claimed skills and experience from resume text.
+- **GitHub Evidence Agent**: Derives verified skills from public GitHub activity.
+- **Job Matching Agent**: Matches candidate against target role requirements.
+- **Skill Gap Agent**: Identifies and prioritizes missing competencies.
+- **Master Career Agent**: Synthesizes all outputs into the final report with a weighted readiness score, verified/unverified skills, strengths, gaps, evidence, recommendations, and a comprehensive 4-week roadmap.
 
-Key orchestration function: run_full_analysis executes the pipeline in order and returns each agent’s output plus the final career report.
+Key orchestration function: `run_full_analysis` executes the pipeline in order and returns each agent's output plus the final career report.
 
 **Section sources**
 - [agents.py:28-210](file://src/agents.py#L28-L210)
@@ -107,7 +116,7 @@ P->>SA : run(job_match, resume_analysis, github_analysis)
 SA->>L : chat_json(system, user)
 L-->>SA : skill_gaps
 P->>MA : run(target_role, resume_analysis, github_analysis, job_match, skill_gaps)
-MA->>L : chat_json(system, user, max_tokens=4000)
+MA->>L : chat_json(system, user, max_tokens=8192)
 L-->>MA : career_report
 P-->>A : {resume_analysis, github_analysis, job_match, skill_gaps, career_report}
 A-->>C : {status, target_role, github_username, analysis, agent_details}
@@ -123,9 +132,9 @@ A-->>C : {status, target_role, github_username, analysis, agent_details}
 ## Detailed Component Analysis
 
 ### Master Career Agent: System Prompt and Role
-- Positioning: The Master agent acts as the orchestrator that synthesizes outputs from four specialist agents into one honest, evidence-based career report.
-- Core Principle: A skill is VERIFIED only when the resume claims it AND GitHub activity proves it; otherwise it is UNVERIFIED.
-- Output Contract: The agent must return a JSON object with a defined structure including scores, lists, and a 4-week roadmap.
+- **Positioning**: The Master agent acts as the orchestrator that synthesizes outputs from four specialist agents into one honest, evidence-based career report.
+- **Core Principle**: A skill is VERIFIED only when the resume claims it AND GitHub activity proves it; otherwise it is UNVERIFIED.
+- **Output Contract**: The agent must return a JSON object with a defined structure including scores, lists, and a comprehensive 4-week roadmap.
 
 Evidence:
 - The system prompt explicitly states the evidence-based principle and the requirement for realistic, non-inflated assessments.
@@ -134,65 +143,71 @@ Evidence:
 **Section sources**
 - [agents.py:212-289](file://src/agents.py#L212-L289)
 
-### Synthesis Methodology
-- Inputs:
+### Enhanced Synthesis Methodology
+- **Inputs**:
   - Resume analysis: claimed skills, experience highlights, quality notes.
   - GitHub evidence: verified skills with confidence and repo highlights.
   - Job match: required skills, matched/missing skills, match percentage.
   - Skill gaps: critical/moderate gaps and quick wins.
-- Process:
+- **Process**:
   - Cross-check resume claims against GitHub evidence to classify skills as verified or unverified.
-  - Compare candidate’s demonstrated skills against job requirements to assess fit and identify gaps.
+  - Compare candidate's demonstrated skills against job requirements to assess fit and identify gaps.
   - Aggregate insights to compute a holistic readiness score using specified weights.
-  - Generate actionable recommendations and a 4-week roadmap tailored to close identified gaps.
+  - Generate actionable recommendations and a comprehensive 4-week roadmap tailored to close identified gaps.
+- **Enhanced Features**:
+  - Weighted scoring system with transparent breakdown
+  - Evidence-based skill verification with concrete proof points
+  - Prioritized gap analysis with severity levels
+  - Actionable 30-day roadmap with specific weekly objectives
 
 **Section sources**
 - [agents.py:223-289](file://src/agents.py#L223-L289)
 
-### Score Calculation Logic
-- Overall career_readiness_score is a 0–100 composite reflecting:
-  - Resume quality: 25%
-  - Evidence strength: 25%
-  - Job match: 30%
-  - Skill coverage: 20%
-- The score_breakdown provides component scores so users can see where they stand on each dimension.
-- Note: The precise numeric formula is not hardcoded; the agent computes the score based on the provided inputs and weights while adhering to the contract.
+### Advanced Score Calculation Logic
+- **Overall career_readiness_score** is a 0–100 composite reflecting:
+  - Resume quality: 25% weight
+  - Evidence strength: 25% weight  
+  - Job match: 30% weight
+  - Skill coverage: 20% weight
+- **Score breakdown** provides component scores so users can see where they stand on each dimension.
+- **Dynamic calculation**: The agent computes the score based on the provided inputs and weights while adhering to the contract, ensuring realistic and evidence-based scoring.
 
 **Section sources**
 - [agents.py:254-262](file://src/agents.py#L254-L262)
 
-### Verified vs Unverified Skills
-- Verified skills: Claims present in the resume AND supported by GitHub activity. Each entry includes the skill and concrete evidence.
-- Unverified skills: Claims present in the resume but lacking public proof. Each entry includes the skill and reason (e.g., no repos found using it).
-- This distinction ensures honesty and prevents inflated claims from skewing readiness.
+### Verified vs Unverified Skills Classification
+- **Verified skills**: Claims present in the resume AND supported by GitHub activity. Each entry includes the skill and concrete evidence source.
+- **Unverified skills**: Claims present in the resume but lacking public proof. Each entry includes the skill and reason (e.g., no repos found using it).
+- **Honesty enforcement**: This distinction ensures transparency and prevents inflated claims from skewing readiness assessments.
 
 **Section sources**
 - [agents.py:263-268](file://src/agents.py#L263-L268)
 
-### Strengths, Skill Gaps, and Evidence Citations
-- Strengths: Up to six genuine strengths backed by data (resume and GitHub).
-- Skill gaps: Up to eight gaps ranked by severity (critical, moderate, minor), with reasons why each matters.
-- Evidence: Up to eight concrete facts sourced from either GitHub or resume to support the assessment.
+### Comprehensive Strengths, Skill Gaps, and Evidence Citations
+- **Strengths**: Up to six genuine strengths backed by data (resume and GitHub), highlighting what the candidate does well.
+- **Skill gaps**: Up to eight gaps ranked by severity (critical, moderate, minor), with reasons why each matters for the target role.
+- **Evidence**: Up to eight concrete facts sourced from either GitHub or resume to support the assessment, providing verifiable backing for all conclusions.
 
 **Section sources**
 - [agents.py:269-275](file://src/agents.py#L269-L275)
 
-### Recommendations and 4-Week Roadmap
-- Recommendations: Up to six prioritized, specific next actions derived from gaps and opportunities.
-- Roadmap: Exactly four entries (weeks 1–4), each with focus theme, concrete tasks, and expected outcome at week-end.
+### Actionable Recommendations and 4-Week Roadmap
+- **Recommendations**: Up to six prioritized, specific next actions derived from gaps and opportunities, focused on highest-impact improvements.
+- **Roadmap**: Exactly four entries (weeks 1–4), each with focus theme, concrete tasks, and expected outcome at week-end, creating a clear path to improvement.
+- **Project recommendation**: Specific project suggestion that addresses identified gaps while demonstrating relevant skills.
 
 **Section sources**
 - [agents.py:276-279](file://src/agents.py#L276-L279)
 
 ### Example Report Generation Flow
-- Input preparation:
-  - Resume text extracted from PDF.
-  - GitHub profile summarized into evidence_text.
-- Pipeline execution:
-  - Four specialist agents produce structured outputs.
-  - Master agent consumes these outputs and generates the final report.
-- Output:
-  - The API returns analysis (career report) and agent_details for transparency.
+- **Input preparation**:
+  - Resume text extracted from PDF with content validation.
+  - GitHub profile summarized into evidence_text with repository analysis.
+- **Pipeline execution**:
+  - Four specialist agents produce structured outputs with evidence-based analysis.
+  - Master agent consumes these outputs and generates the final comprehensive report.
+- **Output**:
+  - The API returns analysis (career report) and agent_details for full transparency.
 
 ```mermaid
 flowchart TD
@@ -212,23 +227,24 @@ Report --> End(["End"])
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [agents.py:295-334](file://src/agents.py#L295-L334)
 
-### Evidence Correlation and Final Assessment Formulation
-- Evidence correlation:
+### Enhanced Evidence Correlation and Final Assessment Formulation
+- **Evidence correlation**:
   - The Master agent compares resume claims with GitHub evidence to determine verified skills.
   - It uses job matching results to contextualize which skills matter most for the target role.
   - It leverages skill gap analysis to prioritize development efforts.
-- Final assessment formulation:
-  - Produces a balanced, realistic verdict on hiring readiness.
+- **Final assessment formulation**:
+  - Produces a balanced, realistic verdict on hiring readiness with supporting evidence.
   - Provides clear, actionable steps to improve weak areas and strengthen evidence.
+  - Includes specific project recommendations to demonstrate key skills.
 
 **Section sources**
 - [agents.py:223-289](file://src/agents.py#L223-L289)
 
 ## Dependency Analysis
 The Master Career Agent depends on:
-- QwenClient for LLM calls with strict JSON output rules and retry logic.
-- Agent pipeline orchestration to sequence analyses and pass structured data between stages.
-- Supporting services for input enrichment (resume text extraction and GitHub profile summarization).
+- **QwenClient** for LLM calls with strict JSON output rules and retry logic.
+- **Agent pipeline orchestration** to sequence analyses and pass structured data between stages.
+- **Supporting services** for input enrichment (resume text extraction and GitHub profile summarization).
 
 ```mermaid
 graph LR
@@ -248,54 +264,86 @@ CFG --> GH
 - [config.py:23-79](file://src/config.py#L23-L79)
 
 **Section sources**
-- [qwen_client.py:1-158](file://src/qwen_client.py#L1-L158)
+- [qwen_client.py:1-161](file://src/qwen_client.py#L1-L161)
 - [agents.py:295-334](file://src/agents.py#L295-L334)
 - [resume_service.py:1-58](file://src/resume_service.py#L1-L58)
 - [github_service.py:1-173](file://src/github_service.py#L1-L173)
-- [config.py:1-79](file://src/config.py#L1-L79)
+- [config.py:1-72](file://src/config.py#L1-L72)
 
 ## Performance Considerations
-- LLM calls: Each agent invokes the Qwen API; the Master agent uses a higher token limit to accommodate the full report.
-- Concurrency: The pipeline runs sequentially to ensure dependencies are met; parallelization could be considered if dependencies allow.
-- Input limits: Resume text is truncated to control prompt size and cost; GitHub top repos are limited to a configurable number.
-- Error handling: Robust retries for JSON parsing and explicit error messages for network/auth issues.
-
-[No sources needed since this section provides general guidance]
+- **LLM calls**: Each agent invokes the Gemini API; the Master agent uses a higher token limit (8192 tokens) to accommodate the comprehensive report generation.
+- **Concurrency**: The pipeline runs sequentially to ensure dependencies are met; parallelization could be considered if dependencies allow.
+- **Input limits**: Resume text is truncated to control prompt size and cost; GitHub top repos are limited to a configurable number.
+- **Error handling**: Robust retries for JSON parsing and explicit error messages for network/auth issues.
+- **Token optimization**: The Master agent's increased token budget allows for more detailed analysis and comprehensive roadmap generation.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
-- Missing Qwen API key: Raises configuration error; set DASHSCOPE_API_KEY in .env.
-- Invalid or empty resume PDF: Raises resume error; ensure a text-based PDF is uploaded.
-- GitHub API rate limit: Add GITHUB_TOKEN to increase rate limit; handle errors gracefully.
-- Invalid LLM output: QwenClient attempts one repair call; persistent failures raise detailed errors.
+- **Missing API key**: Raises configuration error; set GOOGLE_API_KEY in .env file.
+- **Invalid or empty resume PDF**: Raises resume error; ensure a text-based PDF is uploaded.
+- **GitHub API rate limit**: Add GITHUB_TOKEN to increase rate limit; handle errors gracefully.
+- **Invalid LLM output**: QwenClient attempts one repair call; persistent failures raise detailed errors.
+- **Token limit exceeded**: If the Master agent encounters token limitations, consider reducing input complexity or adjusting model settings.
 
 **Section sources**
 - [main.py:100-131](file://src/main.py#L100-L131)
 - [resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 - [github_service.py:48-60](file://src/github_service.py#L48-L60)
-- [qwen_client.py:120-157](file://src/qwen_client.py#L120-L157)
+- [qwen_client.py:120-161](file://src/qwen_client.py#L120-L161)
 
 ## Conclusion
-The Master Career Agent is the synthesis engine that transforms multi-source evidence into a credible, actionable career report. By enforcing strict verification—only counting skills as verified when both resume claims and GitHub activity align—it delivers honest assessments grounded in real-world data. The weighted readiness score, structured skill lists, targeted recommendations, and a practical 4-week roadmap provide candidates with a clear path to improve their job readiness.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Master Career Agent is the synthesis engine that transforms multi-source evidence into a credible, actionable career report. By enforcing strict verification—only counting skills as verified when both resume claims and GitHub activity align—it delivers honest assessments grounded in real-world data. The weighted readiness score, structured skill lists, targeted recommendations, and practical 4-week roadmap provide candidates with a clear, evidence-based path to improve their job readiness. The enhanced system now provides comprehensive analysis with transparent scoring, concrete evidence tracking, and actionable development plans.
 
 ## Appendices
 
 ### API Response Shape (Abbreviated)
-- status: success
-- target_role: string
-- github_username: string
-- analysis: career report object (score, breakdown, skills, gaps, evidence, recommendations, roadmap, project, summary)
-- agent_details: raw outputs from each specialist agent
+- **status**: success
+- **target_role**: string
+- **github_username**: string
+- **analysis**: career report object containing:
+  - career_readiness_score: 0-100 overall score
+  - score_breakdown: detailed component scores
+  - verified_skills: skills with concrete evidence
+  - unverified_skills: claims without proof
+  - strengths: data-backed strengths
+  - skill_gaps: prioritized gaps with severity
+  - evidence: concrete supporting facts
+  - recommendations: prioritized action items
+  - roadmap_30_days: 4-week development plan
+  - recommended_project: specific project suggestion
+  - hiring_readiness_summary: honest readiness assessment
+- **agent_details**: raw outputs from each specialist agent
 
 **Section sources**
 - [main.py:134-147](file://src/main.py#L134-L147)
 - [README.md:286-327](file://README.md#L286-L327)
 
 ### Test Coverage Highlights
-- Offline tests validate pipeline ordering, JSON parsing, GitHub summary construction, and resume service error paths without requiring live API keys.
-- Tests confirm the Master agent receives all prior agent outputs and produces the expected career report fields.
+- **Offline tests** validate pipeline ordering, JSON parsing, GitHub summary construction, and resume service error paths without requiring live API keys.
+- **Tests confirm** the Master agent receives all prior agent outputs and produces the expected comprehensive career report fields.
+- **Enhanced testing** covers the complete workflow from resume upload through final report generation.
 
 **Section sources**
-- [test_pipeline.py:141-203](file://tests/test_pipeline.py#L141-L203)
+- [test_pipeline.py:141-207](file://tests/test_pipeline.py#L141-L207)
+
+### Enhanced Output Structure Details
+The Master Career Agent now produces a comprehensive output structure that includes:
+
+**Core Assessment Fields:**
+- career_readiness_score: Overall 0-100 score with weighted components
+- score_breakdown: Individual component scores (resume_quality, evidence_strength, job_match, skill_coverage)
+
+**Evidence-Based Skill Analysis:**
+- verified_skills: Skills with concrete GitHub evidence
+- unverified_skills: Resume claims without public proof
+- strengths: Data-backed positive attributes
+- skill_gaps: Prioritized gaps with severity levels
+
+**Actionable Development Plan:**
+- recommendations: Specific next steps prioritized by impact
+- roadmap_30_days: 4-week plan with weekly objectives
+- recommended_project: Targeted project to address gaps
+- hiring_readiness_summary: Honest assessment of job readiness
+
+**Section sources**
+- [agents.py:254-287](file://src/agents.py#L254-L287)

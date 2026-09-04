@@ -1,1 +1,0 @@
-FastAPI web service that runs a five-agent pipeline to analyze a candidate's resume and GitHub profile against a target role and return an evidence-based career readiness report powered by Alibaba Cloud Qwen.

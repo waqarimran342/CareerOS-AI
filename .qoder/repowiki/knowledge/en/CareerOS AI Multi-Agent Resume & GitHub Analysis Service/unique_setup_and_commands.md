@@ -1,0 +1,1 @@
+Run locally with `python src/main.py` after copying `.env.example` to `.env` and setting `GOOGLE_API_KEY` (required) and optionally `GITHUB_TOKEN`; the server starts on `127.0.0.1:8000` with interactive docs at `/docs`. Tests are executed via `pytest tests/ -v` and do not require an API key.

@@ -1,0 +1,1 @@
+Python with FastAPI + Uvicorn for the HTTP server; `google-generativeai` SDK calling Google Gemini (configured via `GOOGLE_API_KEY`); `requests` for GitHub REST API; `pypdf` for PDF text extraction; `python-dotenv` for local `.env` loading; Pydantic-style validation via FastAPI form fields.

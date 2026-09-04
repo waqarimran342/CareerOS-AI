@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: CareerOS AI Multi-Agent Career Intelligence Platform
+title: CareerOS AI Multi-Agent Resume & GitHub Analysis Service
 scope:
     - .
     - .env.example

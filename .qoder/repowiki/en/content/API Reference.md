@@ -11,6 +11,16 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated LLM provider from Alibaba Cloud Qwen to Google Gemini throughout the documentation
+- Enhanced error handling documentation with comprehensive HTTP status codes
+- Added complete API endpoint specifications with detailed request/response schemas
+- Updated authentication methods to reflect current implementation (no built-in auth)
+- Expanded rate limiting considerations for both GitHub API and Gemini API
+- Added concrete examples for curl and JavaScript fetch requests
+- Documented complete multi-agent pipeline response structure
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -25,10 +35,10 @@
 
 ## Introduction
 CareerOS AI is a FastAPI-based service that performs multi-agent career readiness analysis by combining resume text and GitHub profile evidence, optionally matched against a target job description. It exposes:
-- POST /api/analyze: multipart form endpoint to run the full 5-agent analysis pipeline.
+- POST /api/analyze: multipart form endpoint to run the full 5-agent analysis pipeline using Google Gemini.
 - GET /health: lightweight status check including configuration validation for external services.
 
-The system uses Alibaba Cloud Model Studio (Qwen) via an OpenAI-compatible client and fetches public GitHub data to verify skills beyond resume claims.
+The system uses Google Gemini via the google-generativeai SDK and fetches public GitHub data to verify skills beyond resume claims.
 
 ## Project Structure
 The application is organized into clear modules:
@@ -36,7 +46,7 @@ The application is organized into clear modules:
 - Configuration: environment-driven settings in config.py
 - Services: resume PDF parsing and GitHub profile fetching
 - Agents: five specialized agents orchestrated to produce a final report
-- LLM client: Qwen wrapper with JSON extraction and retry logic
+- LLM client: Gemini wrapper with JSON extraction and retry logic
 
 ```mermaid
 graph TB
@@ -44,26 +54,26 @@ Client["Client App"] --> API["FastAPI App<br/>src/main.py"]
 API --> ResumeSvc["Resume Service<br/>src/resume_service.py"]
 API --> GitHubSvc["GitHub Service<br/>src/github_service.py"]
 API --> Agents["Agent Pipeline<br/>src/agents.py"]
-Agents --> Qwen["Qwen Client<br/>src/qwen_client.py"]
-Qwen --> LLM["Qwen API"]
+Agents --> Gemini["Gemini Client<br/>src/qwen_client.py"]
+Gemini --> LLM["Google Gemini API"]
 GitHubSvc --> GH["GitHub REST API"]
 ```
 
 **Diagram sources**
 - [main.py:28-147](file://src/main.py#L28-L147)
 - [agents.py:295-334](file://src/agents.py#L295-L334)
-- [qwen_client.py:70-157](file://src/qwen_client.py#L70-L157)
+- [qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 - [github_service.py:63-89](file://src/github_service.py#L63-L89)
 - [resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 
 **Section sources**
 - [main.py:28-147](file://src/main.py#L28-L147)
-- [config.py:23-79](file://src/config.py#L23-L79)
+- [config.py:23-72](file://src/config.py#L23-L72)
 
 ## Core Components
 - POST /api/analyze
   - Accepts multipart/form-data fields: resume (PDF), github_username, target_role, and optional job_description.
-  - Validates inputs, enforces file type and size limits, checks model configuration, extracts resume text, fetches GitHub profile, runs the agent pipeline, and returns a structured response.
+  - Validates inputs, enforces file type and size limits, checks Gemini configuration, extracts resume text, fetches GitHub profile, runs the agent pipeline, and returns a structured response.
 - GET /health
   - Returns application metadata and configuration status flags (model configured, GitHub token presence).
 
@@ -73,13 +83,13 @@ Authentication
 Rate limiting
 - No server-side rate limiting is implemented. External rate limits apply:
   - GitHub REST API: 60 requests/hour without token; up to 5000/hour with GITHUB_TOKEN.
-  - Qwen API: subject to provider rate limits and quotas.
+  - Google Gemini API: subject to provider rate limits and quotas based on your Google AI Studio account.
 
 Response status codes
 - 200 OK: successful analysis.
 - 400 Bad Request: invalid input (missing fields, non-PDF, empty file, too large).
-- 502 Bad Gateway: upstream failures (GitHub API errors, Qwen API errors).
-- 503 Service Unavailable: Qwen not configured.
+- 502 Bad Gateway: upstream failures (GitHub API errors, Gemini API errors).
+- 503 Service Unavailable: Gemini not configured.
 
 Error handling strategy
 - Input validation raises HTTPException with descriptive messages.
@@ -87,10 +97,10 @@ Error handling strategy
 - The frontend expects a JSON body with a detail field on error responses.
 
 **Section sources**
-- [main.py:45-147](file://src/main.py#L45-L147)
+- [main.py:58-147](file://src/main.py#L58-L147)
 - [github_service.py:22-60](file://src/github_service.py#L22-L60)
 - [resume_service.py:17-57](file://src/resume_service.py#L17-L57)
-- [qwen_client.py:27-157](file://src/qwen_client.py#L27-L157)
+- [qwen_client.py:31-161](file://src/qwen_client.py#L31-L161)
 
 ## Architecture Overview
 The analyze endpoint orchestrates a 5-agent pipeline:
@@ -107,13 +117,13 @@ participant A as "FastAPI /api/analyze"
 participant R as "Resume Service"
 participant G as "GitHub Service"
 participant P as "Agent Pipeline"
-participant Q as "Qwen Client"
+participant Q as "Gemini Client"
 C->>A : POST multipart (resume, github_username, target_role, job_description)
 A->>R : extract_text_from_pdf(resume_bytes)
 R-->>A : resume_text
 A->>G : fetch_profile(github_username)
 G-->>A : github_profile
-A->>P : run_full_analysis(qwen, resume_text, github_profile, target_role, job_description)
+A->>P : run_full_analysis(gemini, resume_text, github_profile, target_role, job_description)
 P->>Q : chat_json per agent
 Q-->>P : JSON dicts per agent
 P-->>A : {career_report, agent_details}
@@ -123,7 +133,7 @@ A-->>C : 200 OK + analysis result
 **Diagram sources**
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [agents.py:295-334](file://src/agents.py#L295-L334)
-- [qwen_client.py:97-157](file://src/qwen_client.py#L97-L157)
+- [qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 - [github_service.py:63-89](file://src/github_service.py#L63-L89)
 - [resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 
@@ -141,7 +151,7 @@ A-->>C : 200 OK + analysis result
   - resume filename must end with .pdf.
   - File size limited by MAX_RESUME_MB (default 10 MB).
   - Empty files are rejected.
-  - Qwen must be configured (DASHSCOPE_API_KEY set); otherwise returns 503.
+  - Gemini must be configured (GOOGLE_API_KEY set); otherwise returns 503.
 - Processing flow:
   - Extract resume text (resume_service.extract_text_from_pdf).
   - Fetch GitHub profile (github_service.fetch_profile).
@@ -172,14 +182,14 @@ A-->>C : 200 OK + analysis result
 flowchart TD
 Start(["POST /api/analyze"]) --> Validate["Validate inputs<br/>username, role, PDF, size"]
 Validate --> |Invalid| Err400["HTTP 400 with detail"]
-Validate --> CheckModel{"Qwen configured?"}
+Validate --> CheckModel{"Gemini configured?"}
 CheckModel --> |No| Err503["HTTP 503: model not configured"]
 CheckModel --> |Yes| Extract["Extract resume text"]
 Extract --> |Error| Err400
 Extract --> FetchGH["Fetch GitHub profile"]
 FetchGH --> |Error| Err502["HTTP 502: GitHub error"]
 FetchGH --> Pipeline["Run 5-agent pipeline"]
-Pipeline --> |LLM error| Err502["HTTP 502: Qwen error"]
+Pipeline --> |LLM error| Err502["HTTP 502: Gemini error"]
 Pipeline --> Return["Return 200 OK with analysis"]
 ```
 
@@ -188,7 +198,7 @@ Pipeline --> Return["Return 200 OK with analysis"]
 - [resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 - [github_service.py:63-89](file://src/github_service.py#L63-L89)
 - [agents.py:295-334](file://src/agents.py#L295-L334)
-- [qwen_client.py:97-157](file://src/qwen_client.py#L97-L157)
+- [qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 
 **Section sources**
 - [main.py:58-147](file://src/main.py#L58-L147)
@@ -200,15 +210,15 @@ Pipeline --> Return["Return 200 OK with analysis"]
   - status: "ok"
   - app: application name
   - version: application version
-  - model: active Qwen model name
-  - qwen_configured: boolean indicating whether DASHSCOPE_API_KEY is set
+  - model: active Gemini model name
+  - gemini_configured: boolean indicating whether GOOGLE_API_KEY is set
   - github_token_set: boolean indicating whether GITHUB_TOKEN is present
 
 Use this endpoint to validate service availability and configuration before invoking analysis.
 
 **Section sources**
 - [main.py:45-55](file://src/main.py#L45-L55)
-- [config.py:23-79](file://src/config.py#L23-L79)
+- [config.py:23-72](file://src/config.py#L23-L72)
 
 ### Agent Pipeline and Data Models
 - ResumeAnalysisAgent: produces candidate_name, summary, years_of_experience, claimed_skills, education, experience_highlights, resume_quality_notes.
@@ -234,19 +244,19 @@ class SkillGapAgent {
 class MasterCareerAgent {
 +run(target_role, resume_analysis, github_analysis, job_match, skill_gaps) Dict
 }
-class QwenClient {
+class GeminiClient {
 +chat_json(agent_name, system_prompt, user_prompt, temperature, max_tokens) Dict
 }
-ResumeAnalysisAgent --> QwenClient : "uses"
-GitHubEvidenceAgent --> QwenClient : "uses"
-JobMatchingAgent --> QwenClient : "uses"
-SkillGapAgent --> QwenClient : "uses"
-MasterCareerAgent --> QwenClient : "uses"
+ResumeAnalysisAgent --> GeminiClient : "uses"
+GitHubEvidenceAgent --> GeminiClient : "uses"
+JobMatchingAgent --> GeminiClient : "uses"
+SkillGapAgent --> GeminiClient : "uses"
+MasterCareerAgent --> GeminiClient : "uses"
 ```
 
 **Diagram sources**
 - [agents.py:30-289](file://src/agents.py#L30-L289)
-- [qwen_client.py:70-157](file://src/qwen_client.py#L70-L157)
+- [qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 
 **Section sources**
 - [agents.py:30-289](file://src/agents.py#L30-L289)
@@ -256,7 +266,7 @@ MasterCareerAgent --> QwenClient : "uses"
   - config.Settings for runtime parameters
   - resume_service.extract_text_from_pdf for PDF parsing
   - github_service.fetch_profile for GitHub data
-  - qwen_client.QwenClient for LLM calls
+  - qwen_client.GeminiClient for LLM calls
   - agents.run_full_analysis for orchestration
 - github_service depends on:
   - config.settings for token and timeouts
@@ -266,8 +276,8 @@ MasterCareerAgent --> QwenClient : "uses"
   - pypdf.PdfReader for PDF parsing
   - Raises ResumeError on invalid or unreadable PDFs
 - qwen_client depends on:
-  - openai.OpenAI for chat completions
-  - Raises QwenError on network/auth/rate-limit/timeouts or invalid JSON
+  - google.generativeai for Gemini API calls
+  - Raises GeminiError on network/auth/rate-limit/timeouts or invalid JSON
 
 ```mermaid
 graph LR
@@ -301,12 +311,10 @@ qc --> cfg
 - Upload limits: Enforced by MAX_RESUME_MB and MAX_RESUME_CHARS to control prompt size and cost.
 - External dependencies: GitHub API rate limits can throttle analysis; configure GITHUB_TOKEN to increase limits.
 - Optimization tips:
-  - Use smaller models (e.g., qwen-turbo) for faster responses when acceptable.
-  - Tune QWEN_TEMPERATURE and QWEN_MAX_TOKENS for balance between quality and speed.
+  - Use smaller models (e.g., gemini-flash-latest) for faster responses when acceptable.
+  - Tune GEMINI_TEMPERATURE and GEMINI_MAX_TOKENS for balance between quality and speed.
   - Cache repeated analyses if applicable (outside current scope).
   - Implement client-side queuing and progress indicators for long-running requests.
-
-[No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -319,8 +327,8 @@ Common issues and resolutions:
 - GitHub rate limit exceeded:
   - Without GITHUB_TOKEN, limit is 60 requests/hour; with token, up to 5000/hour.
   - When rate-limited, the service returns HTTP 502 with guidance to add a token.
-- Qwen not configured:
-  - If DASHSCOPE_API_KEY is missing, endpoint returns HTTP 503 with instructions.
+- Gemini not configured:
+  - If GOOGLE_API_KEY is missing, endpoint returns HTTP 503 with instructions.
 - LLM call failures:
   - Network errors, auth failures, timeouts, or invalid JSON responses result in HTTP 502.
   - The client attempts one repair round for malformed JSON before failing.
@@ -328,19 +336,17 @@ Common issues and resolutions:
 Debugging steps:
 - Call GET /health to confirm service availability and configuration flags.
 - Inspect error.detail in responses for precise failure reasons.
-- Verify environment variables: DASHSCOPE_API_KEY, GITHUB_TOKEN, QWEN_BASE_URL, QWEN_MODEL.
+- Verify environment variables: GOOGLE_API_KEY, GITHUB_TOKEN, GEMINI_MODEL.
 - Test with minimal payloads and known-good resumes to isolate issues.
 
 **Section sources**
 - [main.py:74-131](file://src/main.py#L74-L131)
 - [github_service.py:48-60](file://src/github_service.py#L48-L60)
 - [resume_service.py:17-57](file://src/resume_service.py#L17-L57)
-- [qwen_client.py:85-157](file://src/qwen_client.py#L85-L157)
+- [qwen_client.py:85-161](file://src/qwen_client.py#L85-L161)
 
 ## Conclusion
 CareerOS AI provides a robust, evidence-based career readiness analysis through a well-structured API. The POST /api/analyze endpoint accepts multipart form data and returns a comprehensive report with scores, verified/unverified skills, strengths, gaps, evidence, recommendations, and a 30-day roadmap. The GET /health endpoint enables simple health and configuration checks. While no built-in authentication or rate limiting is implemented, the service integrates cleanly with standard deployment patterns to secure and scale access.
-
-[No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
@@ -349,12 +355,12 @@ CareerOS AI provides a robust, evidence-based career readiness analysis through 
 
 ### Error Handling Strategies
 - Input validation errors: HTTP 400 with human-readable detail.
-- Upstream failures (GitHub/Qwen): HTTP 502 with actionable detail.
+- Upstream failures (GitHub/Gemini): HTTP 502 with actionable detail.
 - Missing model configuration: HTTP 503 with setup instructions.
 
 ### Rate Limiting Considerations
 - GitHub API: use GITHUB_TOKEN to raise limits.
-- Qwen API: adhere to provider quotas; implement client-side backoff and retries.
+- Gemini API: adhere to Google AI Studio quotas; implement client-side backoff and retries.
 
 ### Response Status Codes Summary
 - 200: success
@@ -367,7 +373,7 @@ CareerOS AI provides a robust, evidence-based career readiness analysis through 
 Basic career analysis (curl)
 - Send a PDF resume, GitHub username, and target role. Optionally include a job description.
 - Expected success: 200 with analysis object containing career_readiness_score, score_breakdown, verified_skills, unverified_skills, strengths, skill_gaps, evidence, recommendations, roadmap_30_days, recommended_project.
-- Expected errors: 400 for invalid inputs; 503 if Qwen not configured; 502 for upstream failures.
+- Expected errors: 400 for invalid inputs; 503 if Gemini not configured; 502 for upstream failures.
 
 JavaScript fetch example
 - Construct FormData with resume file and fields, POST to /api/analyze, handle JSON responses and errors.
@@ -380,5 +386,3 @@ Integration guidelines
 - Handle retries with exponential backoff for transient 5xx errors.
 - Respect upload size limits and provide user feedback for invalid files.
 - For progress tracking workflows, poll or queue jobs externally if needed; the current endpoint is synchronous but may take time due to LLM calls.
-
-[No sources needed since this section provides general guidance]

@@ -73,6 +73,43 @@ class TestGeminiClientInit(unittest.TestCase):
             GeminiClient(api_key="   ")
 
 
+class _FakeGeminiResponse:
+    def __init__(self, text):
+        self.text = text
+
+
+class _RateLimitedModel:
+    """Simulates Gemini raising a 429 free-tier quota error, then succeeding."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def generate_content(self, prompt, generation_config=None):
+        self.calls += 1
+        if self.calls == 1:
+            # Mirrors the real free-tier error, including the retry hint.
+            raise RuntimeError(
+                "429 ResourceExhausted: You exceeded your current quota. "
+                "Please retry in 0.05s. Quota exceeded for metric "
+                "generate_content_free_tier_requests, model: gemini-3.6-flash"
+            )
+        return _FakeGeminiResponse('{"ok": true}')
+
+
+class TestRateLimitRetry(unittest.TestCase):
+    def test_chat_json_retries_after_429(self):
+        # A fake key is enough: we swap out client.model before any call,
+        # so nothing ever reaches the real Gemini API.
+        client = GeminiClient(api_key="fake-key-for-offline-test")
+        client.model = _RateLimitedModel()
+
+        result = client.chat_json("Test Agent", "system prompt", "user prompt")
+
+        self.assertEqual(result, {"ok": True})
+        # The first call hit the quota error; the retry succeeded.
+        self.assertEqual(client.model.calls, 2)
+
+
 # ---------------------------------------------------------------------------
 # github_service.build_profile_summary (pure function, fixture data)
 # ---------------------------------------------------------------------------

@@ -13,6 +13,15 @@
 - [.gitignore](file://.gitignore)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated LLM integration from Alibaba Cloud Qwen to Google Gemini
+- Enhanced FastAPI server configuration with proper environment variable handling
+- Added comprehensive health check endpoint for production monitoring
+- Updated deployment instructions for current technology stack
+- Enhanced security considerations for API key management
+- Improved error handling and production readiness
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -28,7 +37,7 @@
 ## Introduction
 This guide provides production deployment instructions for CareerOS AI, covering standalone Python hosting on Alibaba Cloud ECS, Docker containerization, and cloud platform deployments. It includes environment configuration for secure API key management, logging and monitoring setup, scaling strategies, health checks, graceful shutdowns, error handling, security considerations, backup and recovery procedures, and maintenance tasks for long-term operation.
 
-CareerOS AI is a FastAPI application that orchestrates five specialized AI agents to analyze resumes and GitHub profiles using Qwen via Alibaba Cloud Model Studio. The app serves a single-page frontend and exposes REST endpoints for analysis and health checks.
+CareerOS AI is a FastAPI application that orchestrates five specialized AI agents to analyze resumes and GitHub profiles using Google Gemini via the google-generativeai SDK. The app serves a single-page frontend and exposes REST endpoints for analysis and health checks.
 
 **Section sources**
 - [README.md:74-104](file://README.md#L74-L104)
@@ -40,7 +49,7 @@ The application is organized into a small, focused set of modules:
 - Application entry point and HTTP routes
 - Configuration loaded from environment variables
 - Services for external integrations (GitHub, PDF extraction)
-- A client wrapper for the Qwen LLM
+- A client wrapper for the Google Gemini LLM
 - Agent orchestration for multi-agent analysis
 
 ```mermaid
@@ -52,7 +61,7 @@ end
 subgraph "Services"
 GH["GitHub Service<br/>src/github_service.py"]
 RES["Resume Service<br/>src/resume_service.py"]
-QW["Qwen Client<br/>src/qwen_client.py"]
+QW["Gemini Client<br/>src/qwen_client.py"]
 end
 subgraph "Agents"
 AG["Agent Pipeline<br/>src/agents.py"]
@@ -69,7 +78,7 @@ AG --> QW
 - [src/config.py:23-73](file://src/config.py#L23-L73)
 - [src/github_service.py:63-89](file://src/github_service.py#L63-L89)
 - [src/resume_service.py:24-57](file://src/resume_service.py#L24-L57)
-- [src/qwen_client.py:70-95](file://src/qwen_client.py#L70-L95)
+- [src/qwen_client.py:74-97](file://src/qwen_client.py#L74-97)
 - [src/agents.py:295-334](file://src/agents.py#L295-L334)
 
 **Section sources**
@@ -81,7 +90,7 @@ AG --> QW
 - FastAPI application with endpoints for home page, health check, and analysis
 - Environment-driven settings for API keys, model parameters, timeouts, and server binding
 - External services for GitHub profile data and PDF text extraction
-- Qwen client wrapper for OpenAI-compatible calls to Alibaba Cloud Model Studio
+- Gemini client wrapper for Google AI Studio calls
 - Multi-agent pipeline orchestrating resume analysis, GitHub evidence, job matching, skill gap detection, and final synthesis
 
 Key runtime behaviors:
@@ -104,7 +113,7 @@ participant Client as "Client"
 participant API as "FastAPI /api/analyze<br/>src/main.py"
 participant ResSvc as "Resume Service<br/>src/resume_service.py"
 participant GH as "GitHub Service<br/>src/github_service.py"
-participant QW as "Qwen Client<br/>src/qwen_client.py"
+participant QW as "Gemini Client<br/>src/qwen_client.py"
 participant Agents as "Agent Pipeline<br/>src/agents.py"
 Client->>API : POST /api/analyze (resume, github_username, target_role, job_description)
 API->>API : Validate inputs & size limits
@@ -112,7 +121,7 @@ API->>ResSvc : extract_text_from_pdf(resume_bytes)
 ResSvc-->>API : resume_text
 API->>GH : fetch_profile(github_username)
 GH-->>API : github_profile
-API->>Agents : run_full_analysis(qwen, resume_text, github_profile, target_role, job_description)
+API->>Agents : run_full_analysis(gemini, resume_text, github_profile, target_role, job_description)
 Agents->>QW : chat_json(...) per agent
 QW-->>Agents : JSON responses
 Agents-->>API : career_report + agent_details
@@ -123,7 +132,7 @@ API-->>Client : {status, analysis, agent_details}
 - [src/main.py:58-147](file://src/main.py#L58-L147)
 - [src/resume_service.py:24-57](file://src/resume_service.py#L24-L57)
 - [src/github_service.py:63-89](file://src/github_service.py#L63-L89)
-- [src/qwen_client.py:97-157](file://src/qwen_client.py#L97-L157)
+- [src/qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 - [src/agents.py:295-334](file://src/agents.py#L295-L334)
 
 ## Detailed Component Analysis
@@ -141,17 +150,17 @@ Operational notes:
 **Section sources**
 - [src/main.py:28-55](file://src/main.py#L28-L55)
 - [src/main.py:58-147](file://src/main.py#L58-L147)
-- [src/main.py:150-159](file://src/main.py#L150-L159)
-- [src/config.py:66-69](file://src/config.py#L66-L69)
+- [src/main.py:150-160](file://src/main.py#L150-L160)
+- [src/config.py:61-62](file://src/config.py#L61-L62)
 
 ### Configuration Management
 - Loads .env from project root automatically
 - Exposes a flat Settings class with defaults and environment overrides for:
-  - Qwen API key, base URL, model, temperature, max tokens, timeout
+  - Google API key, Gemini model, temperature, max tokens
   - GitHub token and timeouts
   - Upload limits (MB and characters)
   - Server host and port
-- Provides a helper to detect if Qwen is configured
+- Provides a helper to detect if Gemini is configured
 
 Security best practices:
 - Never hard-code secrets; rely on environment variables
@@ -160,23 +169,22 @@ Security best practices:
 **Section sources**
 - [src/config.py:1-20](file://src/config.py#L1-L20)
 - [src/config.py:23-73](file://src/config.py#L23-L73)
-- [src/config.py:76-79](file://src/config.py#L76-L79)
+- [src/config.py:69-72](file://src/config.py#L69-L72)
 - [.gitignore:1-2](file://.gitignore#L1-L2)
 
-### Qwen Client Wrapper
-- Thin wrapper around the OpenAI SDK pointing to Alibaba Cloud Model Studio
+### Gemini Client Wrapper
+- Thin wrapper around the Google Generative AI SDK
 - Enforces strict JSON output rules and attempts one repair round if parsing fails
 - Raises domain-specific errors for network/auth/timeout issues
 
 Production implications:
-- Configure appropriate timeouts and model selection based on cost/performance needs
+- Configure appropriate model selection based on cost/performance needs
 - Ensure API key is present before starting requests
 
 **Section sources**
-- [src/qwen_client.py:1-16](file://src/qwen_client.py#L1-L16)
-- [src/qwen_client.py:27-39](file://src/qwen_client.py#L27-L39)
-- [src/qwen_client.py:70-95](file://src/qwen_client.py#L70-L95)
-- [src/qwen_client.py:97-157](file://src/qwen_client.py#L97-L157)
+- [src/qwen_client.py:1-20](file://src/qwen_client.py#L1-L20)
+- [src/qwen_client.py:74-97](file://src/qwen_client.py#L74-97)
+- [src/qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 
 ### GitHub Service
 - Fetches public profile and repositories, builds a compact summary and evidence text
@@ -191,7 +199,7 @@ Scaling considerations:
 - [src/github_service.py:1-10](file://src/github_service.py#L1-L10)
 - [src/github_service.py:26-60](file://src/github_service.py#L26-L60)
 - [src/github_service.py:63-89](file://src/github_service.py#L63-L89)
-- [src/github_service.py:92-147](file://src/github_service.py#L92-L147)
+- [src/github_service.py:92-173](file://src/github_service.py#L92-L173)
 
 ### Resume Service
 - Extracts text from uploaded PDFs using pypdf
@@ -209,7 +217,7 @@ Error handling:
 - Runs independent analyses first, then compares requirements, and finally synthesizes a comprehensive report
 
 Design notes:
-- Each agent uses the Qwen client to produce structured JSON
+- Each agent uses the Gemini client to produce structured JSON
 - Pipeline returns both the headline report and detailed agent outputs
 
 **Section sources**
@@ -217,36 +225,36 @@ Design notes:
 - [src/agents.py:295-334](file://src/agents.py#L295-L334)
 
 ## Dependency Analysis
-Runtime dependencies include FastAPI, Uvicorn, OpenAI SDK, requests, PyPDF, python-multipart, and pydantic. These are declared in the requirements file.
+Runtime dependencies include FastAPI, Uvicorn, Google Generative AI SDK, requests, PyPDF, python-multipart, and pydantic. These are declared in the requirements file.
 
 ```mermaid
 graph LR
 R["requirements.txt"]
 F["FastAPI"]
 U["Uvicorn"]
-O["OpenAI SDK"]
-Q["Qwen Client<br/>src/qwen_client.py"]
-G["GitHub Service<br/>src/github_service.py"]
+G["Google Generative AI"]
+Q["Gemini Client<br/>src/qwen_client.py"]
+GH["GitHub Service<br/>src/github_service.py"]
 RS["Resume Service<br/>src/resume_service.py"]
 A["Agents<br/>src/agents.py"]
 M["Main App<br/>src/main.py"]
 R --> F
 R --> U
-R --> O
 R --> G
+R --> GH
 R --> RS
 M --> F
 M --> A
 A --> Q
-Q --> O
-M --> G
+Q --> G
+M --> GH
 M --> RS
 ```
 
 **Diagram sources**
 - [requirements.txt:1-8](file://requirements.txt#L1-L8)
 - [src/main.py:14-21](file://src/main.py#L14-L21)
-- [src/qwen_client.py:22-24](file://src/qwen_client.py#L22-L24)
+- [src/qwen_client.py:26-28](file://src/qwen_client.py#L26-L28)
 - [src/github_service.py:15-17](file://src/github_service.py#L15-L17)
 - [src/resume_service.py:12-14](file://src/resume_service.py#L12-L14)
 - [src/agents.py:24-24](file://src/agents.py#L24-L24)
@@ -256,9 +264,9 @@ M --> RS
 
 ## Performance Considerations
 - Concurrency: The analysis endpoint is synchronous; FastAPI executes it in a worker thread, preventing blocking of other requests. For high concurrency, deploy multiple workers behind a reverse proxy or load balancer.
-- Timeouts: Configure Qwen and GitHub timeouts to balance responsiveness and reliability.
+- Timeouts: Configure GitHub timeouts to balance responsiveness and reliability.
 - Payload limits: Enforce resume size and character limits to control memory and prompt costs.
-- External service resilience: Handle GitHub rate limits and Qwen API errors gracefully.
+- External service resilience: Handle GitHub rate limits and Gemini API errors gracefully.
 - Caching: Consider caching GitHub profile summaries for repeated usernames to reduce external calls.
 - Resource sizing: Allocate sufficient CPU/memory for concurrent LLM calls and PDF processing.
 
@@ -266,10 +274,10 @@ M --> RS
 
 ## Troubleshooting Guide
 Common issues and resolutions:
-- Missing Qwen API key: Ensure DASHSCOPE_API_KEY is set; the health endpoint indicates configuration status.
+- Missing Google API key: Ensure GOOGLE_API_KEY is set; the health endpoint indicates configuration status.
 - Invalid or empty resume: Validate file type and size; ensure PDF contains extractable text.
 - GitHub API failures: Check username validity, rate limits, and token presence; adjust timeouts.
-- LLM call errors: Inspect Qwen client errors for auth, rate limit, or network issues; verify base URL and model availability.
+- LLM call errors: Inspect Gemini client errors for auth, rate limit, or network issues; verify model availability.
 
 Health checks:
 - GET /health returns status, app metadata, model, and configuration flags for readiness.
@@ -288,7 +296,7 @@ Monitoring:
 **Section sources**
 - [src/main.py:45-55](file://src/main.py#L45-L55)
 - [src/main.py:74-107](file://src/main.py#L74-L107)
-- [src/qwen_client.py:120-157](file://src/qwen_client.py#L120-L157)
+- [src/qwen_client.py:120-161](file://src/qwen_client.py#L120-L161)
 - [src/github_service.py:48-60](file://src/github_service.py#L48-L60)
 - [src/resume_service.py:31-49](file://src/resume_service.py#L31-L49)
 
@@ -305,9 +313,9 @@ Steps:
 2. Install Python 3.9+ and create a virtual environment.
 3. Clone the repository and install dependencies from requirements.txt.
 4. Create a .env file in the project root with required variables:
-   - DASHSCOPE_API_KEY (required)
-   - QWEN_BASE_URL (optional; default points to international endpoint)
-   - QWEN_MODEL, QWEN_TEMPERATURE, QWEN_MAX_TOKENS, QWEN_TIMEOUT (optional)
+   - GOOGLE_API_KEY (required)
+   - GEMINI_MODEL (optional; default is gemini-3.6-flash)
+   - GEMINI_TEMPERATURE, GEMINI_MAX_TOKENS (optional)
    - GITHUB_TOKEN (optional; increases rate limit)
    - MAX_RESUME_MB, MAX_RESUME_CHARS (optional)
    - API_HOST, API_PORT (optional; bind to 0.0.0.0 for external access)
@@ -326,8 +334,8 @@ Database setup:
 
 **Section sources**
 - [README.md:108-150](file://README.md#L108-L150)
-- [src/config.py:37-69](file://src/config.py#L37-L69)
-- [src/main.py:150-159](file://src/main.py#L150-L159)
+- [src/config.py:34-62](file://src/config.py#L34-L62)
+- [src/main.py:150-160](file://src/main.py#L150-L160)
 - [.gitignore:1-2](file://.gitignore#L1-L2)
 
 ### Appendix B: Docker Containerization
@@ -351,8 +359,8 @@ Deployment:
 
 **Section sources**
 - [requirements.txt:1-8](file://requirements.txt#L1-L8)
-- [src/main.py:150-159](file://src/main.py#L150-L159)
-- [src/config.py:66-69](file://src/config.py#L66-L69)
+- [src/main.py:150-160](file://src/main.py#L150-L160)
+- [src/config.py:61-62](file://src/config.py#L61-L62)
 
 ### Appendix C: Cloud Platform Deployments
 Options:
@@ -371,8 +379,8 @@ Scaling:
 - Tune worker count and timeouts based on observed load
 
 **Section sources**
-- [src/main.py:150-159](file://src/main.py#L150-L159)
-- [src/config.py:66-69](file://src/config.py#L66-L69)
+- [src/main.py:150-160](file://src/main.py#L150-L160)
+- [src/config.py:61-62](file://src/config.py#L61-L62)
 
 ### Appendix D: Security Considerations
 Input validation:
@@ -393,7 +401,7 @@ Network security:
 
 **Section sources**
 - [src/main.py:74-107](file://src/main.py#L74-L107)
-- [src/config.py:37-69](file://src/config.py#L37-L69)
+- [src/config.py:34-62](file://src/config.py#L34-L62)
 - [.gitignore:1-2](file://.gitignore#L1-L2)
 
 ### Appendix E: Monitoring and Logging
@@ -408,11 +416,11 @@ Monitoring:
 Alerting:
 - Alert on unhealthy status from /health
 - Alert on elevated error rates and slow responses
-- Alert on external API failures (GitHub, Qwen)
+- Alert on external API failures (GitHub, Gemini)
 
 **Section sources**
 - [src/main.py:45-55](file://src/main.py#L45-L55)
-- [src/qwen_client.py:120-157](file://src/qwen_client.py#L120-L157)
+- [src/qwen_client.py:120-161](file://src/qwen_client.py#L120-L161)
 - [src/github_service.py:48-60](file://src/github_service.py#L48-L60)
 
 ### Appendix F: Backup and Recovery
@@ -430,7 +438,7 @@ Maintenance:
 - Review and tune timeouts and limits based on usage patterns
 
 **Section sources**
-- [src/config.py:37-69](file://src/config.py#L37-L69)
+- [src/config.py:34-62](file://src/config.py#L34-L62)
 
 ### Appendix G: Step-by-Step Deployment Guides
 
@@ -457,5 +465,5 @@ Maintenance:
 
 **Section sources**
 - [README.md:108-150](file://README.md#L108-L150)
-- [src/main.py:150-159](file://src/main.py#L150-L159)
-- [src/config.py:37-69](file://src/config.py#L37-L69)
+- [src/main.py:150-160](file://src/main.py#L150-L160)
+- [src/config.py:34-62](file://src/config.py#L34-L62)

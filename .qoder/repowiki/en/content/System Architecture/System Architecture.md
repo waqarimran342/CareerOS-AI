@@ -14,6 +14,15 @@
 - [test_pipeline.py](file://tests/test_pipeline.py)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated LLM integration from Alibaba Cloud Qwen to Google Gemini via google-generativeai SDK
+- Enhanced multi-agent system documentation with detailed agent responsibilities and data flow
+- Added comprehensive FastAPI layer architecture with input validation and error handling
+- Documented service-oriented architecture with clear separation of concerns
+- Updated technology stack to reflect actual implementation using Google Gemini API
+- Enhanced orchestration pattern documentation showing five-agent pipeline execution
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -27,7 +36,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-CareerOS AI is a multi-agent career intelligence platform that evaluates a candidate’s readiness for a target role by combining evidence from two sources: the uploaded resume and the candidate’s public GitHub profile. Five specialized agents collaborate to analyze, match, and synthesize insights into an actionable report with scores, verified skills, gaps, recommendations, and a 30-day roadmap. The system uses Alibaba Cloud Model Studio (Qwen) via an OpenAI-compatible API, FastAPI for the web layer, PyPDF for resume text extraction, and the GitHub REST API for evidence gathering.
+CareerOS AI is a multi-agent career intelligence platform that evaluates a candidate's readiness for a target role by combining evidence from two sources: the uploaded resume and the candidate's public GitHub profile. Five specialized agents collaborate to analyze, match, and synthesize insights into an actionable report with scores, verified skills, gaps, recommendations, and a 30-day roadmap. The system uses Google Gemini via the google-generativeai SDK, FastAPI for the web layer, PyPDF for resume text extraction, and the GitHub REST API for evidence gathering.
 
 The orchestration pattern centers on a Master Career Agent that coordinates the pipeline execution and synthesizes outputs from four specialist agents: Resume Analyzer, GitHub Evidence Agent, Job Matcher, and Skill Gap Detector.
 
@@ -56,7 +65,7 @@ A4["SkillGapAgent"]
 A5["MasterCareerAgent"]
 end
 subgraph "Integrations"
-QWEN["qwen_client.py<br/>OpenAI SDK -> Qwen"]
+GEMINI["qwen_client.py<br/>google-generativeai -> Gemini"]
 GITHUB["github_service.py<br/>REST API"]
 PDF["resume_service.py<br/>PyPDF"]
 end
@@ -67,11 +76,11 @@ ORCH --> A2
 ORCH --> A3
 ORCH --> A4
 ORCH --> A5
-A1 --> QWEN
-A2 --> QWEN
-A3 --> QWEN
-A4 --> QWEN
-A5 --> QWEN
+A1 --> GEMINI
+A2 --> GEMINI
+A3 --> GEMINI
+A4 --> GEMINI
+A5 --> GEMINI
 API --> GITHUB
 API --> PDF
 ```
@@ -79,7 +88,7 @@ API --> PDF
 **Diagram sources**
 - [main.py:28-147](file://src/main.py#L28-L147)
 - [agents.py:295-335](file://src/agents.py#L295-L335)
-- [qwen_client.py:70-158](file://src/qwen_client.py#L70-L158)
+- [qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 - [github_service.py:63-147](file://src/github_service.py#L63-L147)
 - [resume_service.py:24-58](file://src/resume_service.py#L24-L58)
 - [index.html:390-732](file://src/static/index.html#L390-L732)
@@ -89,12 +98,12 @@ API --> PDF
 - [README.md:173-202](file://README.md#L173-L202)
 
 ## Core Components
-- FastAPI application layer: exposes endpoints for health checks and analysis; validates inputs; orchestrates external services and agent pipeline; returns structured results.
-- Multi-agent system: five specialized agents implement focused prompts and return typed JSON structures consumed by subsequent stages.
-- LLM client: thin wrapper around the OpenAI SDK configured to call Alibaba Cloud Model Studio (Qwen); enforces strict JSON output and includes retry logic for malformed responses.
-- GitHub service: fetches user profile and repositories, filters forks, aggregates languages/topics, selects top repos, and builds an LLM-friendly evidence summary.
-- Resume service: extracts text from PDFs using PyPDF, handles errors, and truncates long resumes to control prompt size and cost.
-- Configuration: loads settings from environment variables including model credentials, timeouts, upload limits, and server bindings.
+- **FastAPI application layer**: exposes endpoints for health checks and analysis; validates inputs; orchestrates external services and agent pipeline; returns structured results.
+- **Multi-agent system**: five specialized agents implement focused prompts and return typed JSON structures consumed by subsequent stages.
+- **Gemini client**: thin wrapper around the google-generativeai SDK configured to call Google Gemini; enforces strict JSON output and includes retry logic for malformed responses.
+- **GitHub service**: fetches user profile and repositories, filters forks, aggregates languages/topics, selects top repos, and builds an LLM-friendly evidence summary.
+- **Resume service**: extracts text from PDFs using PyPDF, handles errors, and truncates long resumes to control prompt size and cost.
+- **Configuration**: loads settings from environment variables including model credentials, timeouts, upload limits, and server bindings.
 
 Key responsibilities and interactions:
 - Input validation and error mapping occur at the API boundary.
@@ -105,17 +114,17 @@ Key responsibilities and interactions:
 **Section sources**
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [agents.py:29-290](file://src/agents.py#L29-L290)
-- [qwen_client.py:27-158](file://src/qwen_client.py#L27-L158)
+- [qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 - [github_service.py:22-173](file://src/github_service.py#L22-L173)
 - [resume_service.py:17-58](file://src/resume_service.py#L17-L58)
-- [config.py:23-79](file://src/config.py#L23-L79)
+- [config.py:23-72](file://src/config.py#L23-L72)
 
 ## Architecture Overview
 The system follows a service-oriented architecture with clear boundaries:
-- Presentation: static HTML served by FastAPI.
-- API: request validation, input sanitization, and response formatting.
-- Orchestration: pipeline coordinator that sequences agent calls and composes outputs.
-- Integrations: LLM provider (Qwen), GitHub REST API, and PDF parser.
+- **Presentation**: static HTML served by FastAPI.
+- **API**: request validation, input sanitization, and response formatting.
+- **Orchestration**: pipeline coordinator that sequences agent calls and composes outputs.
+- **Integrations**: LLM provider (Google Gemini), GitHub REST API, and PDF parser.
 
 ```mermaid
 sequenceDiagram
@@ -124,7 +133,7 @@ participant API as "FastAPI /api/analyze"
 participant ResSvc as "Resume Service"
 participant GH as "GitHub Service"
 participant Orchestrator as "agents.run_full_analysis"
-participant Q as "QwenClient"
+participant G as "GeminiClient"
 participant A1 as "ResumeAnalysisAgent"
 participant A2 as "GitHubEvidenceAgent"
 participant A3 as "JobMatchingAgent"
@@ -135,22 +144,22 @@ API->>ResSvc : extract_text_from_pdf(resume_bytes)
 ResSvc-->>API : resume_text
 API->>GH : fetch_profile(github_username)
 GH-->>API : github_profile (includes evidence_text)
-API->>Orchestrator : run_full_analysis(qwen, resume_text, github_profile, target_role, job_description)
+API->>Orchestrator : run_full_analysis(gemini, resume_text, github_profile, target_role, job_description)
 Orchestrator->>A1 : run(resume_text, target_role)
-A1->>Q : chat_json(system_prompt, user_prompt)
-Q-->>A1 : resume_analysis dict
+A1->>G : chat_json(system_prompt, user_prompt)
+G-->>A1 : resume_analysis dict
 Orchestrator->>A2 : run(github_profile.evidence_text)
-A2->>Q : chat_json(...)
-Q-->>A2 : github_analysis dict
+A2->>G : chat_json(...)
+G-->>A2 : github_analysis dict
 Orchestrator->>A3 : run(target_role, job_description, resume_analysis, github_analysis)
-A3->>Q : chat_json(...)
-Q-->>A3 : job_match dict
+A3->>G : chat_json(...)
+G-->>A3 : job_match dict
 Orchestrator->>A4 : run(job_match, resume_analysis, github_analysis)
-A4->>Q : chat_json(...)
-Q-->>A4 : skill_gaps dict
+A4->>G : chat_json(...)
+G-->>A4 : skill_gaps dict
 Orchestrator->>A5 : run(target_role, resume_analysis, github_analysis, job_match, skill_gaps)
-A5->>Q : chat_json(..., max_tokens=4000)
-Q-->>A5 : career_report dict
+A5->>G : chat_json(..., max_tokens=8192)
+G-->>A5 : career_report dict
 Orchestrator-->>API : {resume_analysis, github_analysis, job_match, skill_gaps, career_report}
 API-->>Client : {status, target_role, github_username, analysis, agent_details}
 ```
@@ -158,7 +167,7 @@ API-->>Client : {status, target_role, github_username, analysis, agent_details}
 **Diagram sources**
 - [main.py:58-147](file://src/main.py#L58-L147)
 - [agents.py:295-335](file://src/agents.py#L295-L335)
-- [qwen_client.py:97-158](file://src/qwen_client.py#L97-L158)
+- [qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 - [github_service.py:63-147](file://src/github_service.py#L63-L147)
 - [resume_service.py:24-58](file://src/resume_service.py#L24-L58)
 
@@ -182,11 +191,11 @@ Design notes:
 
 ### Multi-Agent System and Orchestration
 Agents:
-- Resume Analysis Agent: extracts claimed skills, experience, education, and quality notes from resume text.
-- GitHub Evidence Agent: derives verified skills from public activity, repo highlights, and language usage.
-- Job Matching Agent: defines required skills for the target role and matches against candidate data.
-- Skill Gap Agent: identifies critical and moderate gaps and quick wins based on requirements vs. demonstrated skills.
-- Master Career Agent: synthesizes all outputs into a comprehensive report with scores, strengths, gaps, evidence, recommendations, and a 30-day roadmap.
+- **Resume Analysis Agent**: extracts claimed skills, experience, education, and quality notes from resume text.
+- **GitHub Evidence Agent**: derives verified skills from public activity, repo highlights, and language usage.
+- **Job Matching Agent**: defines required skills for the target role and matches against candidate data.
+- **Skill Gap Agent**: identifies critical and moderate gaps and quick wins based on requirements vs. demonstrated skills.
+- **Master Career Agent**: synthesizes all outputs into a comprehensive report with scores, strengths, gaps, evidence, recommendations, and a 30-day roadmap.
 
 Orchestration:
 - Pipeline function constructs agents and executes them in dependency order.
@@ -212,10 +221,10 @@ S5 --> End(["Return full results"])
 - [agents.py:29-290](file://src/agents.py#L29-L290)
 - [agents.py:295-335](file://src/agents.py#L295-L335)
 
-### LLM Integration (Qwen via OpenAI-Compatible API)
+### LLM Integration (Google Gemini via google-generativeai SDK)
 Implementation:
-- Thin client wraps the OpenAI SDK, pointing base_url to Alibaba Cloud Model Studio.
-- Enforces strict JSON output rules across all prompts.
+- Thin client wraps the google-generativeai SDK, configured to call Google Gemini API.
+- Enforces strict JSON output rules across all prompts using shared JSON rules.
 - Includes robust JSON extraction to handle markdown fences or chatter.
 - Implements one retry attempt when initial JSON parsing fails.
 
@@ -227,7 +236,7 @@ Configuration:
 - Model, temperature, max tokens, and timeout are configurable via environment variables.
 
 **Section sources**
-- [qwen_client.py:27-158](file://src/qwen_client.py#L27-L158)
+- [qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 - [config.py:29-48](file://src/config.py#L29-L48)
 
 ### GitHub Evidence Service
@@ -239,7 +248,7 @@ Capabilities:
 - Builds an LLM-friendly evidence text summary.
 
 Error handling:
-- Maps 404 to “user not found.”
+- Maps 404 to "user not found."
 - Detects rate limiting and suggests adding a token.
 - Wraps other failures with friendly messages.
 
@@ -277,7 +286,7 @@ Integration:
 High-level dependencies:
 - main.py depends on agents, config, github_service, qwen_client, resume_service.
 - agents.py depends on qwen_client.
-- qwen_client.py depends on openai SDK and config.
+- qwen_client.py depends on google-generativeai SDK and config.
 - github_service.py depends on requests and config.
 - resume_service.py depends on pypdf and config.
 - index.html depends on backend endpoints.
@@ -290,7 +299,7 @@ main --> gh["github_service.py"]
 main --> qwen["qwen_client.py"]
 main --> pdf["resume_service.py"]
 agents --> qwen
-qwen --> openai["openai SDK"]
+qwen --> gemini["google-generativeai SDK"]
 gh --> requests_lib["requests"]
 pdf --> pypdf_lib["pypdf"]
 ```
@@ -298,7 +307,7 @@ pdf --> pypdf_lib["pypdf"]
 **Diagram sources**
 - [main.py:17-21](file://src/main.py#L17-L21)
 - [agents.py:21-24](file://src/agents.py#L21-L24)
-- [qwen_client.py:18-24](file://src/qwen_client.py#L18-L24)
+- [qwen_client.py:22-28](file://src/qwen_client.py#L22-L28)
 - [github_service.py:12-17](file://src/github_service.py#L12-L17)
 - [resume_service.py:9-14](file://src/resume_service.py#L9-L14)
 
@@ -306,22 +315,20 @@ pdf --> pypdf_lib["pypdf"]
 - [requirements.txt:1-8](file://requirements.txt#L1-L8)
 
 ## Performance Considerations
-- Concurrency: The FastAPI endpoint is synchronous; long-running LLM calls run in worker threads, preventing blocking of the event loop. For higher concurrency, consider running multiple Uvicorn workers behind a reverse proxy.
-- Latency: Each agent makes at least one LLM call; total latency is dominated by network round-trips and model inference time. The pipeline currently executes sequentially due to data dependencies.
-- Parallelism opportunities: Stages 1 and 2 (Resume Analysis and GitHub Evidence) are independent and could be executed concurrently to reduce overall latency.
-- Token budgeting: Max tokens and temperature are configurable; the Master agent uses a higher token limit for synthesis.
-- Rate limits: GitHub API rate limits can be increased with a personal access token; LLM providers may enforce rate limits and quotas.
-- Caching: Consider caching GitHub profiles per username for short periods to reduce repeated network calls during iterative analysis.
-- Scaling: Horizontal scaling via containerization and load balancing; stateless design supports easy replication.
-
-[No sources needed since this section provides general guidance]
+- **Concurrency**: The FastAPI endpoint is synchronous; long-running LLM calls run in worker threads, preventing blocking of the event loop. For higher concurrency, consider running multiple Uvicorn workers behind a reverse proxy.
+- **Latency**: Each agent makes at least one LLM call; total latency is dominated by network round-trips and model inference time. The pipeline currently executes sequentially due to data dependencies.
+- **Parallelism opportunities**: Stages 1 and 2 (Resume Analysis and GitHub Evidence) are independent and could be executed concurrently to reduce overall latency.
+- **Token budgeting**: Max tokens and temperature are configurable; the Master agent uses a higher token limit (8192) for synthesis.
+- **Rate limits**: GitHub API rate limits can be increased with a personal access token; Gemini API may enforce rate limits and quotas.
+- **Caching**: Consider caching GitHub profiles per username for short periods to reduce repeated network calls during iterative analysis.
+- **Scaling**: Horizontal scaling via containerization and load balancing; stateless design supports easy replication.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
-- Missing model configuration: Ensure DASHSCOPE_API_KEY is set; the health endpoint reports whether the model is configured.
-- Invalid resume: Only text-based PDFs are supported; scanned images will raise an error.
-- GitHub errors: User not found or rate-limited; add a token to increase limits or verify the username.
-- LLM errors: Authentication, rate limits, or timeouts; check network and credentials; invalid JSON triggers a retry once.
+- **Missing model configuration**: Ensure GOOGLE_API_KEY is set; the health endpoint reports whether the model is configured.
+- **Invalid resume**: Only text-based PDFs are supported; scanned images will raise an error.
+- **GitHub errors**: User not found or rate-limited; add a token to increase limits or verify the username.
+- **LLM errors**: Authentication, rate limits, or timeouts; check network and credentials; invalid JSON triggers a retry once.
 
 Operational tips:
 - Use /health to verify runtime configuration.
@@ -331,54 +338,50 @@ Operational tips:
 **Section sources**
 - [main.py:45-55](file://src/main.py#L45-L55)
 - [main.py:74-131](file://src/main.py#L74-L131)
-- [qwen_client.py:120-158](file://src/qwen_client.py#L120-L158)
+- [qwen_client.py:120-161](file://src/qwen_client.py#L120-L161)
 - [github_service.py:48-60](file://src/github_service.py#L48-L60)
 - [resume_service.py:31-58](file://src/resume_service.py#L31-L58)
 
 ## Conclusion
-CareerOS AI implements a clear, modular architecture where a FastAPI application layer coordinates a five-agent pipeline powered by Qwen via an OpenAI-compatible API. Evidence from resumes and GitHub is combined to produce an objective, evidence-based assessment with actionable recommendations. The design emphasizes separation of concerns, robust error handling, and configurability. With straightforward deployment options and room for horizontal scaling, the system balances simplicity with extensibility.
-
-[No sources needed since this section summarizes without analyzing specific files]
+CareerOS AI implements a clear, modular architecture where a FastAPI application layer coordinates a five-agent pipeline powered by Google Gemini via the google-generativeai SDK. Evidence from resumes and GitHub is combined to produce an objective, evidence-based assessment with actionable recommendations. The design emphasizes separation of concerns, robust error handling, and configurability. With straightforward deployment options and room for horizontal scaling, the system balances simplicity with extensibility.
 
 ## Appendices
 
 ### Technology Stack
-- Language and framework: Python 3.9+, FastAPI, Uvicorn
-- LLM integration: OpenAI SDK configured to call Alibaba Cloud Model Studio (Qwen)
-- Data sources: PyPDF for resume text extraction; Requests for GitHub REST API
-- Configuration: python-dotenv for environment variables
-- Frontend: Plain HTML/CSS/JS served statically
+- **Language and framework**: Python 3.9+, FastAPI, Uvicorn
+- **LLM integration**: Google Gemini via google-generativeai SDK
+- **Data sources**: PyPDF for resume text extraction; Requests for GitHub REST API
+- **Configuration**: python-dotenv for environment variables
+- **Frontend**: Plain HTML/CSS/JS served statically
 
 **Section sources**
 - [requirements.txt:1-8](file://requirements.txt#L1-L8)
 - [README.md:74-104](file://README.md#L74-L104)
 
 ### Infrastructure Requirements
-- Environment variables:
-  - DASHSCOPE_API_KEY (required)
-  - QWEN_BASE_URL, QWEN_MODEL, QWEN_TEMPERATURE, QWEN_MAX_TOKENS, QWEN_TIMEOUT
+- **Environment variables**:
+  - GOOGLE_API_KEY (required)
+  - GEMINI_MODEL, GEMINI_TEMPERATURE, GEMINI_MAX_TOKENS
   - GITHUB_TOKEN (optional)
   - MAX_RESUME_MB, MAX_RESUME_CHARS
   - API_HOST, API_PORT
-- Compute: Any Python host capable of running Uvicorn; suitable for cloud VMs or containers.
-- Networking: Outbound access to Alibaba Cloud Model Studio and GitHub APIs.
+- **Compute**: Any Python host capable of running Uvicorn; suitable for cloud VMs or containers.
+- **Networking**: Outbound access to Google Gemini API and GitHub APIs.
 
 **Section sources**
 - [config.py:29-69](file://src/config.py#L29-L69)
 - [README.md:108-149](file://README.md#L108-L149)
 
 ### Deployment Topology Options
-- Single-process development: Run Uvicorn directly for local testing.
-- Production:
+- **Single-process development**: Run Uvicorn directly for local testing.
+- **Production**:
   - Containerize the application and deploy to a managed container service.
   - Place behind a reverse proxy (e.g., Nginx) for TLS termination and static asset caching.
   - Scale horizontally with multiple workers and replicas; stateless design supports easy replication.
   - Optionally introduce a message queue for asynchronous processing if analysis becomes a bottleneck.
 
-[No sources needed since this section provides general guidance]
-
 ### Testing Strategy
-- Offline unit tests replace the LLM with a fake client and use fixtures for GitHub data.
+- **Offline unit tests** replace the LLM with a fake client and use fixtures for GitHub data.
 - Tests validate JSON extraction, error paths, and full pipeline ordering.
 - No external network or API keys are required for test execution.
 

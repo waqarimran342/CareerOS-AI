@@ -14,6 +14,14 @@
 - [src/static/index.html](file://src/static/index.html)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated API key configuration from Alibaba Cloud Model Studio to Google Gemini
+- Enhanced environment setup instructions for complete CareerOS AI platform
+- Added comprehensive deployment guidance for the multi-agent system
+- Updated all references to reflect Google Gemini integration
+- Enhanced troubleshooting section with Gemini-specific issues
+
 ## Table of Contents
 1. Introduction
 2. Project Structure
@@ -32,14 +40,14 @@
 15. Conclusion
 
 ## Introduction
-CareerOS AI is a multi-agent career intelligence platform that analyzes your resume and GitHub profile to produce an evidence-based career readiness report. It uses Alibaba Cloud Model Studio (Qwen) via an OpenAI-compatible API and optionally integrates with the GitHub REST API for public code evidence. The application provides both a web UI and a REST API.
+CareerOS AI is a multi-agent career intelligence platform that analyzes your resume and GitHub profile to produce an evidence-based career readiness report. It uses Google Gemini via the google-generativeai SDK and optionally integrates with the GitHub REST API for public code evidence. The application provides both a web UI and a REST API.
 
 ## Project Structure
 The project is organized into a small, focused backend with a single-page frontend:
 - src/main.py: FastAPI entry point, routes, and server startup
 - src/config.py: Settings loaded from environment variables (including .env)
 - src/agents.py: Five specialized agents and pipeline orchestration
-- src/qwen_client.py: Qwen client wrapper around the OpenAI SDK
+- src/qwen_client.py: Gemini client wrapper around the google-generativeai SDK
 - src/github_service.py: Fetches and summarizes public GitHub data
 - src/resume_service.py: Extracts text from uploaded PDF resumes
 - src/static/index.html: Single-file frontend served at the root path
@@ -52,15 +60,15 @@ Client["Browser / curl"] --> Main["FastAPI app<br/>src/main.py"]
 Main --> ResumeSvc["Resume service<br/>src/resume_service.py"]
 Main --> GitHubSvc["GitHub service<br/>src/github_service.py"]
 Main --> Agents["Agent pipeline<br/>src/agents.py"]
-Agents --> Qwen["Qwen client<br/>src/qwen_client.py"]
-Qwen --> Model["Alibaba Cloud Model Studio<br/>Qwen API"]
+Agents --> Gemini["Gemini client<br/>src/qwen_client.py"]
+Gemini --> Model["Google Gemini API"]
 GitHubSvc --> GH["GitHub REST API"]
 ```
 
 **Diagram sources**
 - [src/main.py:28-147](file://src/main.py#L28-L147)
 - [src/agents.py:295-335](file://src/agents.py#L295-L335)
-- [src/qwen_client.py:70-158](file://src/qwen_client.py#L70-L158)
+- [src/qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 - [src/github_service.py:63-147](file://src/github_service.py#L63-L147)
 - [src/resume_service.py:24-58](file://src/resume_service.py#L24-L58)
 
@@ -69,13 +77,13 @@ GitHubSvc --> GH["GitHub REST API"]
 
 ## Prerequisites
 - Python 3.9+
-- An Alibaba Cloud Model Studio API key (Qwen). Create one at the Model Studio console.
+- A Google AI API key (Gemini). Create one at the Google AI Studio console.
 - A GitHub personal access token (optional). It increases the GitHub API rate limit from 60 to 5000 requests per hour.
 
 **Section sources**
-- [README.md:108-113](file://README.md#L108-L113)
-- [.env.example:10-16](file://.env.example#L10-L16)
-- [.env.example:33-39](file://.env.example#L33-L39)
+- [README.md:110-113](file://README.md#L110-L113)
+- [.env.example:10-20](file://.env.example#L10-L20)
+- [.env.example:32-40](file://.env.example#L32-L40)
 
 ## Installation
 1. Clone the repository and enter the project directory.
@@ -95,18 +103,19 @@ Notes:
 
 ## Environment Setup
 Create a .env file in the project root and set:
-- DASHSCOPE_API_KEY: Required. Your Alibaba Cloud Model Studio API key.
+- GOOGLE_API_KEY: Required. Your Google AI Studio API key.
 - GITHUB_TOKEN: Optional. Personal access token for higher GitHub API limits.
 
-Additional optional settings include model selection, sampling parameters, timeouts, upload limits, and server host/port.
+Additional optional settings include model selection (GEMINI_MODEL), sampling parameters (GEMINI_TEMPERATURE, GEMINI_MAX_TOKENS), timeouts, upload limits, and server host/port.
 
 How it works:
 - The configuration module loads .env automatically from the project root so the app runs regardless of which directory you start it from.
-- The health endpoint reports whether the Qwen API key is configured and whether a GitHub token is set.
+- The health endpoint reports whether the Gemini API key is configured and whether a GitHub token is set.
+
+**Updated** Environment variables now use Google Gemini instead of Alibaba Cloud Model Studio.
 
 **Section sources**
-- [.env.example:10-31](file://.env.example#L10-L31)
-- [.env.example:33-50](file://.env.example#L33-L50)
+- [.env.example:10-49](file://.env.example#L10-L49)
 - [src/config.py:16-20](file://src/config.py#L16-L20)
 - [src/config.py:23-70](file://src/config.py#L23-L70)
 - [src/main.py:45-55](file://src/main.py#L45-L55)
@@ -192,8 +201,8 @@ participant M as "FastAPI /api/analyze<br/>src/main.py"
 participant R as "Resume Service<br/>src/resume_service.py"
 participant G as "GitHub Service<br/>src/github_service.py"
 participant A as "Agents Pipeline<br/>src/agents.py"
-participant Q as "Qwen Client<br/>src/qwen_client.py"
-participant S as "Model Studio API"
+participant Q as "Gemini Client<br/>src/qwen_client.py"
+participant S as "Google Gemini API"
 U->>W : Submit resume, GitHub username, target role
 W->>M : POST /api/analyze (multipart)
 M->>M : Validate inputs and config
@@ -205,7 +214,7 @@ S-->>G : Profile + repos
 G-->>M : github_profile summary
 M->>A : run_full_analysis(...)
 A->>Q : chat_json calls (5 agents)
-Q->>S : Qwen chat completions
+Q->>S : Gemini generate_content
 S-->>Q : JSON responses
 Q-->>A : Parsed dicts
 A-->>M : {career_report, agent_details}
@@ -217,7 +226,7 @@ M-->>W : {status, analysis, agent_details}
 - [src/resume_service.py:24-58](file://src/resume_service.py#L24-L58)
 - [src/github_service.py:63-147](file://src/github_service.py#L63-L147)
 - [src/agents.py:295-335](file://src/agents.py#L295-L335)
-- [src/qwen_client.py:97-158](file://src/qwen_client.py#L97-L158)
+- [src/qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 
 **Section sources**
 - [src/main.py:58-147](file://src/main.py#L58-L147)
@@ -225,8 +234,8 @@ M-->>W : {status, analysis, agent_details}
 
 ## Troubleshooting
 Common issues and fixes:
-- Missing or invalid DASHSCOPE_API_KEY:
-  - Ensure .env exists and contains a valid key.
+- Missing or invalid GOOGLE_API_KEY:
+  - Ensure .env exists and contains a valid Google AI Studio API key.
   - The health endpoint indicates whether the model is configured.
   - The analyze endpoint returns a specific error if the model is not configured.
 - Invalid or empty resume PDF:
@@ -236,27 +245,33 @@ Common issues and fixes:
   - Without a token, the limit is low. Add GITHUB_TOKEN to .env to increase the limit significantly.
   - If the user is not found or the API fails, friendly errors are returned.
 - Network or model errors:
-  - Check your internet connection and ensure the base URL matches your account region.
+  - Check your internet connection and ensure your Google AI Studio account is active.
   - The client retries once if the LLM response is not valid JSON.
+- Gemini-specific issues:
+  - Verify your Google AI Studio API key has proper permissions.
+  - Check for any safety filter blocks in Gemini responses.
+  - Monitor API quotas and billing status in Google Cloud Console.
 
 Where to look:
 - Health endpoint shows configuration status.
 - Error messages map to HTTP status codes and provide actionable hints.
+
+**Updated** Troubleshooting now covers Google Gemini-specific issues and authentication problems.
 
 **Section sources**
 - [src/main.py:45-55](file://src/main.py#L45-L55)
 - [src/main.py:74-107](file://src/main.py#L74-L107)
 - [src/resume_service.py:24-58](file://src/resume_service.py#L24-L58)
 - [src/github_service.py:48-60](file://src/github_service.py#L48-L60)
-- [src/qwen_client.py:70-95](file://src/qwen_client.py#L70-L95)
-- [src/qwen_client.py:120-158](file://src/qwen_client.py#L120-L158)
+- [src/qwen_client.py:74-95](file://src/qwen_client.py#L74-L95)
+- [src/qwen_client.py:120-161](file://src/qwen_client.py#L120-L161)
 
 ## Verification Checklist
 - Python version is 3.9+.
 - Virtual environment created and activated.
 - Dependencies installed from requirements.txt.
 - .env file created from .env.example with:
-  - DASHSCOPE_API_KEY set
+  - GOOGLE_API_KEY set
   - GITHUB_TOKEN set (optional but recommended)
 - Server started and accessible at http://127.0.0.1:8000.
 - Health endpoint returns ok and shows model configuration status.
@@ -264,7 +279,7 @@ Where to look:
 - API call to /api/analyze returns a success response with analysis and agent details.
 
 **Section sources**
-- [README.md:108-149](file://README.md#L108-L149)
+- [README.md:110-149](file://README.md#L110-L149)
 - [src/main.py:45-55](file://src/main.py#L45-L55)
 - [src/main.py:58-147](file://src/main.py#L58-L147)
 
@@ -296,7 +311,7 @@ Synthesis --> Return["Return analysis + agent details"]
 Key behaviors:
 - Enforces PDF-only resume uploads and size limits.
 - Requires GitHub username and target role.
-- Checks that the Qwen API key is configured before proceeding.
+- Checks that the Google Gemini API key is configured before proceeding.
 - Returns structured responses including agent details for debugging and demos.
 
 **Section sources**
@@ -306,22 +321,25 @@ Key behaviors:
 ### Configuration Module
 - Loads .env from the project root automatically.
 - Exposes flat settings for API keys, model parameters, GitHub options, upload limits, and server binding.
-- Provides a helper to check if the Qwen API key is configured.
+- Provides a helper to check if the Google Gemini API key is configured.
 
 **Section sources**
 - [src/config.py:16-20](file://src/config.py#L16-L20)
 - [src/config.py:23-70](file://src/config.py#L23-L70)
 - [src/config.py:76-79](file://src/config.py#L76-L79)
 
-### Qwen Client
-- Thin wrapper around the OpenAI SDK pointing to Alibaba Cloud Model Studio’s OpenAI-compatible endpoint.
+### Gemini Client
+- Thin wrapper around the Google Gemini API through the google-generativeai SDK.
 - Ensures a strict JSON output format and attempts one retry if the first response is malformed.
 - Raises a clear error if no API key is present.
+- Handles Gemini-specific error cases and safety filters.
+
+**Updated** Now uses Google Gemini instead of Alibaba Cloud Model Studio.
 
 **Section sources**
 - [src/qwen_client.py:18-39](file://src/qwen_client.py#L18-L39)
-- [src/qwen_client.py:70-95](file://src/qwen_client.py#L70-L95)
-- [src/qwen_client.py:97-158](file://src/qwen_client.py#L97-L158)
+- [src/qwen_client.py:74-95](file://src/qwen_client.py#L74-L95)
+- [src/qwen_client.py:98-161](file://src/qwen_client.py#L98-L161)
 
 ### GitHub Service
 - Fetches public profile and repositories, ignoring forks.
@@ -367,19 +385,19 @@ class SkillGapAgent {
 class MasterCareerAgent {
 +run(target_role, resume_analysis, github_analysis, job_match, skill_gaps) Dict
 }
-class QwenClient {
+class GeminiClient {
 +chat_json(agent_name, system_prompt, user_prompt, ...) Dict
 }
-ResumeAnalysisAgent --> QwenClient : "uses"
-GitHubEvidenceAgent --> QwenClient : "uses"
-JobMatchingAgent --> QwenClient : "uses"
-SkillGapAgent --> QwenClient : "uses"
-MasterCareerAgent --> QwenClient : "uses"
+ResumeAnalysisAgent --> GeminiClient : "uses"
+GitHubEvidenceAgent --> GeminiClient : "uses"
+JobMatchingAgent --> GeminiClient : "uses"
+SkillGapAgent --> GeminiClient : "uses"
+MasterCareerAgent --> GeminiClient : "uses"
 ```
 
 **Diagram sources**
 - [src/agents.py:27-290](file://src/agents.py#L27-L290)
-- [src/qwen_client.py:70-158](file://src/qwen_client.py#L70-L158)
+- [src/qwen_client.py:74-161](file://src/qwen_client.py#L74-L161)
 
 **Section sources**
 - [src/agents.py:27-290](file://src/agents.py#L27-L290)
@@ -390,6 +408,9 @@ MasterCareerAgent --> QwenClient : "uses"
 - The endpoint is synchronous to avoid blocking the event loop during long LLM calls; FastAPI runs sync endpoints in worker threads.
 - Prompt sizes are controlled by truncating very long resumes and limiting analyzed repositories.
 - Using a GitHub token reduces rate-limiting delays.
+- Gemini's performance may vary based on model choice and network conditions.
+
+**Updated** Performance notes now account for Gemini-specific considerations.
 
 **Section sources**
 - [src/main.py:67-73](file://src/main.py#L67-L73)
@@ -398,4 +419,4 @@ MasterCareerAgent --> QwenClient : "uses"
 - [src/github_service.py:114-118](file://src/github_service.py#L114-L118)
 
 ## Conclusion
-You now have everything needed to install, configure, and run CareerOS AI locally. Use the web UI for a guided experience or call the API directly for automation. If you encounter issues, consult the troubleshooting section and verify your environment variables and network connectivity.
+You now have everything needed to install, configure, and run CareerOS AI locally with Google Gemini. Use the web UI for a guided experience or call the API directly for automation. If you encounter issues, consult the troubleshooting section and verify your environment variables and network connectivity. The platform's multi-agent architecture provides comprehensive career intelligence through evidence-based analysis of your resume and GitHub profile.

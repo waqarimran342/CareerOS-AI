@@ -3,11 +3,11 @@ schema_version: 1
 locale: en-US
 branch: main
 nodes_managed: true
-exported_at: "2026-09-04T09:03:17Z"
+exported_at: "2026-09-04T12:37:37Z"
 modules:
     "":
-        dir_name: CareerOS AI Multi-Agent Career Intelligence Platform
-        title: CareerOS AI Multi-Agent Career Intelligence Platform
+        dir_name: CareerOS AI Multi-Agent Resume & GitHub Analysis Service
+        title: CareerOS AI Multi-Agent Resume & GitHub Analysis Service
         scope:
             - .
             - .env.example
