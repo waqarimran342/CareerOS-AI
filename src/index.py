@@ -2,12 +2,13 @@
 CareerOS AI — FastAPI application entry point.
 
 Run from the project root:
-    python src/main.py
+    python src/index.py
 
 Then open http://127.0.0.1:8000 in your browser.
 Interactive API docs: http://127.0.0.1:8000/docs
 """
-
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlib import Path
 from typing import Optional
 
